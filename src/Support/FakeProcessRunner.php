@@ -4,14 +4,8 @@ declare(strict_types=1);
 
 namespace Shipfastlabs\Parsel\Support;
 
-use Shipfastlabs\Parsel;
 use Shipfastlabs\Parsel\Contracts\ProcessRunner;
 
-/**
- * A test double for {@see ProcessRunner} that returns canned output instead of
- * {@see ProcessResult} is returned verbatim. Commands and stdin are recorded for
- * later inspection. Used in test suites via {@see Parsel::fake()}.
- */
 final class FakeProcessRunner implements ProcessRunner
 {
     /**

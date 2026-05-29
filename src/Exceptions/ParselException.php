@@ -6,4 +6,7 @@ namespace Shipfastlabs\Parsel\Exceptions;
 
 use RuntimeException;
 
-abstract class ParselException extends RuntimeException {}
+abstract class ParselException extends RuntimeException
+{
+    //
+}

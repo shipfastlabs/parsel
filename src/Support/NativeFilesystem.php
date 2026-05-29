@@ -32,8 +32,12 @@ final class NativeFilesystem implements Filesystem
     public function put(string $path, string $contents): void
     {
         set_error_handler(static fn (): bool => true);
-        $written = file_put_contents($path, $contents);
-        restore_error_handler();
+
+        try {
+            $written = file_put_contents($path, $contents);
+        } finally {
+            restore_error_handler();
+        }
 
         if ($written === false) {
             throw FilesystemException::unableToWrite($path);
