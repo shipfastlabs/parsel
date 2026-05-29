@@ -1,0 +1,73 @@
+{
+    "name": "shipfastlabs/parsel",
+    "description": "A pure-PHP, expressive wrapper around the liteparse `lit` CLI for fast, local document parsing.",
+    "keywords": [
+        "php",
+        "pdf",
+        "document",
+        "parser",
+        "ocr",
+        "liteparse",
+        "lit"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Pushpak Chhajed",
+            "email": "hello@shipfastlabs.com"
+        }
+    ],
+    "require": {
+        "php": "^8.4.0",
+        "ext-json": "*",
+        "halaxa/json-machine": "^1.2",
+        "symfony/process": "^7.4 || ^8.0"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.29.1",
+        "pestphp/pest": "^5.0.0",
+        "pestphp/pest-plugin-type-coverage": "^5.0.0",
+        "phpstan/phpstan": "^2.1.54",
+        "rector/rector": "^2.4.2",
+        "symfony/var-dumper": "^8.0.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "Shipfastlabs\\Parsel\\": "src/",
+            "Shipfastlabs\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist",
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "scripts": {
+        "lint": [
+            "pint --parallel",
+            "rector"
+        ],
+        "test:type-coverage": "pest --type-coverage --min=100",
+        "test:lint": [
+            "pint --parallel --test",
+            "rector --dry-run"
+        ],
+        "test:unit": "pest --parallel --coverage --exactly=100 --exclude-group=integration",
+        "test:types": "phpstan",
+        "test:refactor": "rector --dry-run",
+        "test": [
+            "@test:lint",
+            "@test:types",
+            "@test:unit"
+        ]
+    }
+}
