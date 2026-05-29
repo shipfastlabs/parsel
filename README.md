@@ -68,6 +68,24 @@ You may also parse raw bytes. This is useful when working with uploaded files, d
 $document = Parsel::bytes($uploadedBytes, 'pdf')->parse();
 ```
 
+Parsel may be used with PDFs, Word documents, spreadsheets, presentations, and images. The same fluent API is used for each supported file type:
+
+```php
+$text = Parsel::file('contract.docx')->text();
+
+$rows = Parsel::file('report.xlsx')->text();
+
+$slides = Parsel::file('deck.pptx')->text();
+
+$scan = Parsel::file('receipt.png')
+    ->withOcr()
+    ->text();
+
+$photo = Parsel::file('invoice.jpg')
+    ->withOcr(language: 'eng')
+    ->parse();
+```
+
 ## Plain Text
 
 The `text` method returns the parsed document text as a string. Parsel removes page header markers from text output before returning it.
