@@ -1,24 +1,24 @@
 # Parsel
 
 <p align="center">
+    <img src="./art/og.png" height="300" alt="Parsel">
+<p align="center">
     <a href="https://github.com/shipfastlabs/parsel/actions"><img alt="Tests" src="https://github.com/shipfastlabs/parsel/actions/workflows/tests.yml/badge.svg"></a>
     <a href="https://packagist.org/packages/shipfastlabs/parsel"><img alt="Latest Version" src="https://img.shields.io/packagist/v/shipfastlabs/parsel"></a>
     <a href="https://packagist.org/packages/shipfastlabs/parsel"><img alt="Total Downloads" src="https://img.shields.io/packagist/dt/shipfastlabs/parsel"></a>
     <a href="https://packagist.org/packages/shipfastlabs/parsel"><img alt="License" src="https://img.shields.io/packagist/l/shipfastlabs/parsel"></a>
 </p>
+</p>
 
-------
+Parsel provides an expressive PHP API for parsing PDFs, Office documents, and images. Your documents are processed locally, allowing you to extract plain text, structured page data, coordinates, and screenshots without sending files to an external service.
 
-A pure-PHP, expressive wrapper around [**liteparse**](https://github.com/run-llama/liteparse) — run-llama's
-fast, fully-local document parser turning PDFs, Office documents and images into text or richly-structured data with bounding boxes.
+Parsel may return plain text, structured document data, page screenshots, or one page at a time for larger documents. It is designed to feel natural in PHP applications while still giving you access to advanced parser options when you need them.
 
 ```php
 use Shipfastlabs\Parsel;
 
-// Plain text
 $text = Parsel::file('invoice.pdf')->text();
 
-// Structured, with per-item coordinates
 $document = Parsel::file('invoice.pdf')
     ->pageRange(1, 5)
     ->withOcr(language: 'eng')
@@ -32,156 +32,232 @@ foreach ($document->pages as $page) {
 }
 ```
 
-> **Requires [PHP 8.4+](https://php.net/releases/)** and the `lit` binary (see below).
+Parsel requires PHP 8.4 or greater and the `lit` binary.
 
 ## Installation
 
-Install the package via Composer:
+You may install Parsel via Composer:
 
 ```bash
 composer require shipfastlabs/parsel
 ```
 
-Parsel is *bring-your-own-binary* — install liteparse's `lit` CLI with whichever toolchain you prefer:
+Parsel does not install liteparse for you. Before parsing documents, you should install the `lit` binary using the toolchain that is most appropriate for your environment:
 
 ```bash
-cargo install liteparse          # Rust
-pip install liteparse            # Python
-npm i -g @llamaindex/liteparse   # Node
+cargo install liteparse
+pip install liteparse
+npm i -g @llamaindex/liteparse
 ```
 
-Parsing Office documents or images additionally needs **LibreOffice** and **ImageMagick** on the host;
-OCR uses bundled **Tesseract**. liteparse runs entirely on your machine — no cloud, no API keys.
+When parsing Office documents or images, liteparse may also require LibreOffice and ImageMagick to be installed on the host machine. OCR support uses Tesseract through liteparse.
 
-## Usage
+## Parsing Files
 
-### Sources
+The `file` method creates a parser instance for a document that already exists on disk. Once a source has been selected, you may choose how the parsed output should be returned.
 
 ```php
-Parsel::file('/path/to/report.pdf');          // a file on disk
-Parsel::bytes($uploadedBytes, 'pdf');          // raw bytes (e.g. an upload) — written to a temp file
+use Shipfastlabs\Parsel;
+
+$text = Parsel::file('/path/to/report.pdf')->text();
 ```
 
-### Page selection
-
-`page()`, `pages()` and `pageRange()` are additive and normalise to liteparse's `--target-pages`:
+You may also parse raw bytes. This is useful when working with uploaded files, database blobs, or documents that have not been persisted to disk. Because byte sources do not include a filename, you should provide the file extension.
 
 ```php
-Parsel::file('doc.pdf')->page(7);                 // a single page
-Parsel::file('doc.pdf')->pages(1, 3, 5);          // specific pages
-Parsel::file('doc.pdf')->pages('1-5', 10);        // ranges and pages
-Parsel::file('doc.pdf')->pageRange(1, 5);         // an inclusive range → "1-5"
-Parsel::file('doc.pdf')->pageRange(1, 5)->page(10); // additive → "1-5,10"
-Parsel::file('doc.pdf')->maxPages(50);            // cap the number of pages parsed
+$document = Parsel::bytes($uploadedBytes, 'pdf')->parse();
 ```
 
-### OCR
+## Plain Text
 
-OCR is **disabled by default** for speed and predictability. Enable it with `withOcr()`, passing any OCR
-settings as named arguments. Use `withoutOcr()` to be explicit about disabling it.
+The `text` method returns the parsed document text as a string. Parsel removes page header markers from text output before returning it.
 
 ```php
-// Enable OCR with default settings
-Parsel::file('scan.pdf')->withOcr()->text();
-
-// Enable OCR and configure it
-Parsel::file('scan.pdf')->withOcr(
-    language: 'fra',                          // Tesseract language code  (--ocr-language)
-    tessdataPath: '/usr/share/tessdata',      // --tessdata-path
-    serverUrl: 'http://localhost:8828/ocr',   // external OCR server      (--ocr-server-url)
-    workers: 8,                               // concurrent OCR workers   (--num-workers)
-)->text();
-
-// Explicitly disable OCR (the default)
-Parsel::file('doc.pdf')->withoutOcr()->text();
+$text = Parsel::file('document.pdf')
+    ->withoutOcr()
+    ->text();
 ```
 
-### Rendering & misc
+## Structured Documents
+
+The `parse` method returns a `Document` object containing the document text, metadata, pages, and positioned text items. This is useful when you need coordinates, font information, or OCR confidence values.
 
 ```php
-Parsel::file('doc.pdf')->withDpi(300);                 // rendering DPI
-Parsel::file('doc.pdf')->preserveSmallText();          // keep very small text
-Parsel::file('secret.pdf')->withPassword('hunter2');   // encrypted documents
-Parsel::file('doc.pdf')->withBinary('/usr/local/bin/lit'); // per-call binary override
-Parsel::file('doc.pdf')->withTimeout(120);             // process timeout in seconds
-```
+$document = Parsel::file('document.pdf')->parse();
 
-### Escape hatch
+echo $document->text;
+echo $document->pageCount();
 
-Any `lit` flag not yet modelled by a method can be passed through with `option()`:
-
-```php
-Parsel::file('doc.pdf')->option('some-new-flag');       // → --some-new-flag
-Parsel::file('doc.pdf')->option('some-new-flag', 42);   // → --some-new-flag 42
-```
-
-### Terminals
-
-```php
-$text  = Parsel::file('doc.pdf')->text();           // string
-$doc   = Parsel::file('doc.pdf')->parse();          // Document
-$array = Parsel::file('doc.pdf')->toArray();         // array
-$path  = Parsel::file('doc.pdf')->save('out.json');  // ".json" → JSON, anything else → text
-$pngs  = Parsel::file('doc.pdf')->screenshots('/tmp/pages'); // PNG paths in the output directory
-```
-
-> `screenshots()` returns the image files found in the output directory after `lit` runs — point it at a
-> dedicated, empty directory.
-
-### Streaming large documents
-
-`parse()` loads the whole document into memory. For very large PDFs, `lazyPages()` streams the result one
-`Page` at a time at roughly constant memory — `lit` writes its JSON to a temp file and Parsel parses it
-incrementally (via [`halaxa/json-machine`](https://github.com/halaxa/json-machine)):
-
-```php
-foreach (Parsel::file('huge-10k.pdf')->lazyPages() as $page) {
+foreach ($document->pages as $page) {
     foreach ($page->items as $item) {
-        // process one page at a time — the full document is never held in memory
+        echo $item->text;
     }
 }
 ```
 
-### The `Document`
+The document may also be returned as an array:
 
 ```php
-$document->text;          // string — full document text
-$document->pageCount();   // int
-$document->pages;         // list<Page>
-
-$page->number;            // int
-$page->width;             // float
-$page->height;            // float
-$page->text;              // string
-$page->items;             // list<TextItem>
-
-$item->text;              // string
-$item->x; $item->y;       // float — top-left position (PDF points)
-$item->width; $item->height;
-$item->fontName;          // ?string
-$item->fontSize;          // ?float
-$item->confidence;        // ?float — OCR confidence (0–1)
+$array = Parsel::file('document.pdf')->toArray();
 ```
 
-## Binary resolution
+## Page Selection
 
-When you call a terminal, Parsel resolves the `lit` binary in this order:
-
-1. A per-call override — `->withBinary('/path/to/lit')`
-2. A global default — `Parsel::usingBinary('/path/to/lit')`
-3. The `PARSEL_LIT_BINARY` environment variable
-4. `lit` on the system `PATH`
-
-If none resolve, a `BinaryNotFoundException` is thrown.
+The `page`, `pages`, and `pageRange` methods may be used to limit parsing to specific pages. These methods are additive, so you may combine multiple calls before parsing the document.
 
 ```php
-Parsel::usingBinary('/usr/local/bin/lit'); // set once during bootstrap
+Parsel::file('document.pdf')->page(7);
+
+Parsel::file('document.pdf')->pages(1, 3, 5);
+
+Parsel::file('document.pdf')->pages('1-5', 10);
+
+Parsel::file('document.pdf')->pageRange(1, 5);
+
+Parsel::file('document.pdf')->pageRange(1, 5)->page(10);
+```
+
+If you only need to limit how many pages are parsed, you may use the `maxPages` method:
+
+```php
+Parsel::file('document.pdf')->maxPages(50)->text();
+```
+
+## OCR
+
+OCR is disabled by default so that parsing remains fast and predictable. You may enable OCR using the `withOcr` method:
+
+```php
+$text = Parsel::file('scan.pdf')->withOcr()->text();
+```
+
+The `withOcr` method accepts named arguments for the most common OCR options:
+
+```php
+$text = Parsel::file('scan.pdf')
+    ->withOcr(
+        language: 'fra',
+        tessdataPath: '/usr/share/tessdata',
+        serverUrl: 'http://localhost:8828/ocr',
+        workers: 8,
+    )
+    ->text();
+```
+
+If you would like to be explicit that OCR should not be used, you may call `withoutOcr`:
+
+```php
+$text = Parsel::file('document.pdf')->withoutOcr()->text();
+```
+
+## Rendering Options
+
+Parsel includes convenience methods for common parser options such as rendering DPI, small text preservation, encrypted documents, and per-call process settings.
+
+```php
+Parsel::file('document.pdf')->withDpi(300);
+
+Parsel::file('document.pdf')->preserveSmallText();
+
+Parsel::file('secret.pdf')->withPassword('hunter2');
+
+Parsel::file('document.pdf')->withBinary('/usr/local/bin/lit');
+
+Parsel::file('document.pdf')->withTimeout(120);
+```
+
+## Additional Options
+
+If you need to pass a flag that Parsel does not yet provide as a dedicated method, you may pass the option directly using the `option` method. Boolean options may be passed without a value, while options that require a value may receive one as the second argument.
+
+```php
+Parsel::file('document.pdf')->option('some-new-flag');
+
+Parsel::file('document.pdf')->option('some-new-flag', 42);
+```
+
+## Saving Output
+
+The `save` method writes parsed output to disk and returns the path that was written. When the target path ends in `.json`, Parsel will write JSON output. For all other extensions, Parsel will write plain text.
+
+```php
+Parsel::file('document.pdf')->save('document.txt');
+
+Parsel::file('document.pdf')->save('document.json');
+```
+
+## Screenshots
+
+You may use the `screenshots` method to render page screenshots into a directory. The method returns the image files found in the output directory after parsing has finished.
+
+```php
+$screenshots = Parsel::file('document.pdf')
+    ->pageRange(1, 5)
+    ->screenshots('/tmp/parsel-pages');
+```
+
+For predictable results, you should pass a dedicated output directory that does not contain unrelated files.
+
+## Streaming Large Documents
+
+The `parse` and `toArray` methods load the parsed document into memory. When working with large documents, you may use `lazyPages` to process one page at a time.
+
+```php
+foreach (Parsel::file('large-document.pdf')->lazyPages() as $page) {
+    foreach ($page->items as $item) {
+        // Process one page at a time...
+    }
+}
+```
+
+This allows Parsel to read pages incrementally instead of keeping the full document in memory.
+
+## Document Data
+
+A parsed `Document` contains the full text, metadata, and a list of pages. Each page contains its dimensions, page text, and text items with position data.
+
+```php
+$document->text;
+$document->metadata;
+$document->pages;
+$document->pageCount();
+
+$page->number;
+$page->width;
+$page->height;
+$page->text;
+$page->items;
+
+$item->text;
+$item->x;
+$item->y;
+$item->width;
+$item->height;
+$item->fontName;
+$item->fontSize;
+$item->confidence;
+```
+
+## Binary Resolution
+
+When Parsel needs to parse a document, it resolves the `lit` binary in the following order:
+
+1. The per-call binary configured with `withBinary`.
+2. The global binary configured with `Parsel::usingBinary`.
+3. The `PARSEL_LIT_BINARY` environment variable.
+4. The `lit` binary available on the system `PATH`.
+
+If no binary can be resolved, Parsel will throw a `BinaryNotFoundException`.
+
+```php
+Parsel::usingBinary('/usr/local/bin/lit');
+
 Parsel::defaultTimeout(120);
 ```
 
 ## Testing
 
-Parsel ships a fake runner so your test suite never spawns the real binary:
+Parsel includes a fake runner that allows your tests to exercise parsing code without spawning the real binary. Response keys are matched against the command line as substrings. When multiple responses match, the longest matching key is used.
 
 ```php
 use Shipfastlabs\Parsel;
@@ -195,25 +271,20 @@ $document = Parsel::file('invoice.pdf')->parse();
 expect($fake->recordedCommands()[0])->toContain('--format', 'json');
 ```
 
-Each response key is matched against the command line as a substring; the **longest** matching key wins. A
-string value becomes successful stdout, or pass a `ProcessResult` for full control over exit code and stderr.
-
-## Architecture
-
-Parsel talks to `lit` synchronously via [Symfony Process](https://symfony.com/doc/current/components/process.html),
-behind a small `ProcessRunner` seam. That seam means a different execution strategy (a long-running server, or
-an async/concurrent runner) can be slotted in later without changing the public API.
+String responses are returned as successful stdout. If you need control over the exit code or stderr, you may provide a `ProcessResult` instance instead.
 
 ## Development
 
+Parsel uses Pint, Rector, PHPStan, and Pest to keep the codebase formatted and well tested.
+
 ```bash
-composer lint          # Pint + Rector (fix)
-composer test:types    # PHPStan (level max)
-composer test:unit     # Pest with 100% coverage
-composer test          # the whole suite
+composer lint
+composer test:types
+composer test:unit
+composer test
 ```
 
-The `tests/Integration` group runs against a real `lit` install and is skipped when the binary is absent:
+The integration tests run against a real parser installation and are skipped when the `lit` binary is not available:
 
 ```bash
 ./vendor/bin/pest --group=integration
@@ -221,5 +292,4 @@ The `tests/Integration` group runs against a real `lit` install and is skipped w
 
 ## Credits
 
-Parsel wraps [liteparse](https://github.com/run-llama/liteparse) by run-llama. Built by
-**[Shipfastlabs](https://shipfastlabs.com)** under the [MIT license](LICENSE.md).
+Parsel is maintained by [Shipfastlabs](https://shipfastlabs.com) and released under the [MIT license](LICENSE.md).
