@@ -1,0 +1,51 @@
+name: Formats
+
+on: ['push', 'pull_request']
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    name: Formats P8.5 - ubuntu-latest
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2
+      with:
+        php-version: 8.5
+        extensions: dom, mbstring, zip
+        coverage: pcov
+
+    - name: Get Composer cache directory
+      id: composer-cache
+      shell: bash
+      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+    - name: Cache dependencies
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5
+      with:
+        path: ${{ steps.composer-cache.outputs.dir }}
+        key: dependencies-php-8.5-os-ubuntu-latest-composer-${{ hashFiles('composer.json') }}
+        restore-keys: dependencies-php-8.5-os-ubuntu-latest-composer-
+
+    - name: Install Composer dependencies
+      run: composer update --prefer-stable --no-interaction --prefer-dist
+
+    - name: Coding Style Checks
+      run: composer test:lint
+
+    - name: Type Checks
+      run: composer test:types
+
+    - name: Type Coverage Checks
+      run: composer test:type-coverage
+
+    - name: Refactor Checks
+      run: composer test:refactor
