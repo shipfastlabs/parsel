@@ -2,12 +2,13 @@
 
 <p align="center">
     <img src="./art/og.png" height="300" alt="Parsel">
+</p>
+
 <p align="center">
     <a href="https://github.com/shipfastlabs/parsel/actions"><img alt="Tests" src="https://github.com/shipfastlabs/parsel/actions/workflows/tests.yml/badge.svg"></a>
     <a href="https://packagist.org/packages/shipfastlabs/parsel"><img alt="Latest Version" src="https://img.shields.io/packagist/v/shipfastlabs/parsel"></a>
     <a href="https://packagist.org/packages/shipfastlabs/parsel"><img alt="Total Downloads" src="https://img.shields.io/packagist/dt/shipfastlabs/parsel"></a>
     <a href="https://packagist.org/packages/shipfastlabs/parsel"><img alt="License" src="https://img.shields.io/packagist/l/shipfastlabs/parsel"></a>
-</p>
 </p>
 
 Parsel provides an expressive PHP API for parsing PDFs, Office documents, and images. Your documents are processed locally, allowing you to extract plain text, structured page data, coordinates, and screenshots without sending files to an external service.
@@ -42,16 +43,26 @@ You may install Parsel via Composer:
 composer require shipfastlabs/parsel
 ```
 
-Parsel does not install liteparse for you. Before parsing documents, install the required `lit` binary using the included helper:
+Install the required `lit` binary:
 
 ```bash
-composer install-lit
+vendor/bin/parsel-install-lit
 ```
 
-If you also want to install LibreOffice and ImageMagick for Office documents, spreadsheets, presentations, and images, pass the system dependency flag:
+For Office documents, spreadsheets, presentations, and images, you may also install the system dependencies:
 
 ```bash
-composer install-lit -- --with-system-dependencies
+vendor/bin/parsel-install-lit --with-system-dependencies
+```
+
+You may choose the installer used for the `lit` binary:
+
+```bash
+vendor/bin/parsel-install-lit --manager=npm
+vendor/bin/parsel-install-lit --manager=pnpm
+vendor/bin/parsel-install-lit --manager=bun
+vendor/bin/parsel-install-lit --manager=pip
+vendor/bin/parsel-install-lit --manager=cargo
 ```
 
 You may also install `lit` yourself using one of the following commands:
