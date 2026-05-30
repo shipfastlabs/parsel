@@ -19,7 +19,7 @@ function litAvailable(): bool
 
 function demoPdf(): string
 {
-    return __DIR__.'/../../examples/docs/apple-10k-2024.pdf';
+    return __DIR__.'/../../examples/docs/sample.pdf';
 }
 
 it('parses a real pdf into text', function (): void {

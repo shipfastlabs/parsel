@@ -6,7 +6,7 @@ use Shipfastlabs\Parsel;
 
 require __DIR__.'/../vendor/autoload.php';
 
-$pdf = __DIR__.'/docs/apple-10k-2024.pdf';
+$pdf = __DIR__.'/docs/sample.pdf';
 
 echo "== 1. text() ==\n";
 $text = Parsel::file($pdf)->page(2)->withoutOcr()->text();
