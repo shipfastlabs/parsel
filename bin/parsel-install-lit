@@ -1,0 +1,118 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+$manager = null;
+$withSystemDependencies = false;
+
+foreach (array_slice($argv, 1) as $argument) {
+    match (true) {
+        str_starts_with($argument, '--manager=') => $manager = substr($argument, 10),
+        $argument === '--with-system-dependencies' => $withSystemDependencies = true,
+        default => fail("Unknown option: {$argument}\nUsage: composer install-lit [-- --manager=npm|pnpm|bun|pip|cargo] [--with-system-dependencies]"),
+    };
+}
+
+$installers = [
+    'npm' => ['npm', 'install', '-g', '@llamaindex/liteparse'],
+    'pnpm' => ['pnpm', 'add', '-g', '@llamaindex/liteparse'],
+    'bun' => ['bun', 'add', '-g', '@llamaindex/liteparse'],
+    'pip' => ['pip', 'install', 'liteparse'],
+    'cargo' => ['cargo', 'install', 'liteparse'],
+];
+
+if ($manager !== null && ! isset($installers[$manager])) {
+    fail("Unsupported manager [{$manager}]. Use npm, pnpm, bun, pip, or cargo.");
+}
+
+if ($lit = executable('lit')) {
+    fwrite(STDOUT, "lit is already installed at {$lit}.\n");
+} else {
+    $manager ??= firstExecutable(array_keys($installers));
+
+    if ($manager === null) {
+        fail('Unable to install lit automatically. Install one of npm, pnpm, bun, pip, or cargo, then run this command again.');
+    }
+
+    fwrite(STDOUT, "Installing lit using {$manager}...\n");
+
+    if (run($installers[$manager]) !== 0) {
+        fail("Unable to install lit using {$manager}.");
+    }
+
+    if (! $lit = executable('lit')) {
+        fail('lit was installed, but it could not be found on your PATH. Restart your shell or add the binary directory to PATH.');
+    }
+
+    fwrite(STDOUT, "lit installed successfully at {$lit}.\n");
+}
+
+if ($withSystemDependencies) {
+    fwrite(STDOUT, "Installing LibreOffice and ImageMagick...\n");
+
+    foreach (systemDependencyCommands() ?: fail('Unable to install system dependencies automatically on this platform. Install LibreOffice and ImageMagick manually.') as $command) {
+        if (run($command) !== 0) {
+            fail('Unable to install system dependencies. Install LibreOffice and ImageMagick manually.');
+        }
+    }
+}
+
+/**
+ * @param  list<string>  $commands
+ */
+function firstExecutable(array $commands): ?string
+{
+    foreach ($commands as $command) {
+        if (executable($command)) {
+            return $command;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * @return list<list<string>>
+ */
+function systemDependencyCommands(): array
+{
+    return match (true) {
+        PHP_OS_FAMILY === 'Darwin' && executable('brew') => [['brew', 'install', '--cask', 'libreoffice'], ['brew', 'install', 'imagemagick']],
+        PHP_OS_FAMILY === 'Linux' && executable('apt-get') => [apt('libreoffice'), apt('imagemagick')],
+        PHP_OS_FAMILY === 'Windows' && executable('choco') => [['choco', 'install', 'libreoffice-fresh', '-y'], ['choco', 'install', 'imagemagick.app', '-y']],
+        default => [],
+    };
+}
+
+/**
+ * @return list<string>
+ */
+function apt(string $package): array
+{
+    $prefix = (! function_exists('posix_geteuid') || posix_geteuid() !== 0) && executable('sudo') ? ['sudo'] : [];
+
+    return [...$prefix, 'apt-get', 'install', '-y', $package];
+}
+
+function executable(string $command): string
+{
+    return trim((string) shell_exec(PHP_OS_FAMILY === 'Windows' ? 'where '.escapeshellarg($command).' 2>NUL' : 'command -v '.escapeshellarg($command).' 2>/dev/null'));
+}
+
+/**
+ * @param  list<string>  $command
+ */
+function run(array $command): int
+{
+    passthru(implode(' ', array_map(escapeshellarg(...), $command)), $exitCode);
+
+    return $exitCode;
+}
+
+function fail(string $message): never
+{
+    fwrite(STDERR, rtrim($message)."\n");
+
+    exit(1);
+}

@@ -42,6 +42,9 @@
             "Tests\\": "tests/"
         }
     },
+    "bin": [
+        "bin/parsel-install-lit"
+    ],
     "minimum-stability": "dev",
     "prefer-stable": true,
     "config": {
@@ -52,6 +55,7 @@
         }
     },
     "scripts": {
+        "install-lit": "@php bin/parsel-install-lit",
         "lint": [
             "pint --parallel",
             "rector"

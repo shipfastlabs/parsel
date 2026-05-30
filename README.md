@@ -42,15 +42,45 @@ You may install Parsel via Composer:
 composer require shipfastlabs/parsel
 ```
 
-Parsel does not install liteparse for you. Before parsing documents, you should install the `lit` binary using the toolchain that is most appropriate for your environment:
+Parsel does not install liteparse for you. Before parsing documents, install the required `lit` binary using the included helper:
+
+```bash
+composer install-lit
+```
+
+If you also want to install LibreOffice and ImageMagick for Office documents, spreadsheets, presentations, and images, pass the system dependency flag:
+
+```bash
+composer install-lit -- --with-system-dependencies
+```
+
+You may also install `lit` yourself using one of the following commands:
 
 ```bash
 cargo install liteparse
 pip install liteparse
 npm i -g @llamaindex/liteparse
+pnpm add -g @llamaindex/liteparse
+bun add -g @llamaindex/liteparse
 ```
 
-When parsing Office documents or images, liteparse may also require LibreOffice and ImageMagick to be installed on the host machine. OCR support uses Tesseract through liteparse.
+If you prefer to install the system dependencies yourself, use the matching commands for your platform:
+
+```bash
+# macOS
+brew install --cask libreoffice # For Office Document
+brew install imagemagick # For Images
+
+# Ubuntu / Debian
+apt-get install libreoffice # For Office Document
+apt-get install imagemagick # For Images
+
+# Windows
+choco install libreoffice-fresh # For Office Document
+choco install imagemagick.app # For Images
+```
+
+LibreOffice is used for Office document conversion, ImageMagick is used for image conversion, and OCR support uses Tesseract through liteparse.
 
 ## Parsing Files
 
