@@ -66,6 +66,7 @@
             "rector --dry-run"
         ],
         "test:unit": "pest --parallel --coverage --exactly=100 --exclude-group=integration",
+        "test:integration": "pest --group=integration",
         "test:types": "phpstan",
         "test:refactor": "rector --dry-run",
         "test": [
