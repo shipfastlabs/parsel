@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Doubles;
 
 use Shipfastlabs\Parsel\Contracts\Filesystem;
+use Throwable;
 
 final readonly class FakeFilesystem implements Filesystem
 {
@@ -12,6 +13,7 @@ final readonly class FakeFilesystem implements Filesystem
         private bool $exists = true,
         private bool $readable = true,
         private string $downloadResult = '',
+        private ?Throwable $downloadException = null,
     ) {}
 
     public function exists(string $path): bool
@@ -38,8 +40,12 @@ final readonly class FakeFilesystem implements Filesystem
         return [];
     }
 
-    public function download(string $url): string
+    public function download(string $url, ?float $timeout = null): string
     {
+        if ($this->downloadException !== null) {
+            throw $this->downloadException;
+        }
+
         return $this->downloadResult;
     }
 }

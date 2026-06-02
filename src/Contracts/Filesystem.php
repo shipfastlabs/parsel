@@ -21,5 +21,5 @@ interface Filesystem
      */
     public function files(string $directory): array;
 
-    public function download(string $url): string;
+    public function download(string $url, ?float $timeout = null): string;
 }

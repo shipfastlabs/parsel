@@ -10,6 +10,7 @@ use Shipfastlabs\Parsel\Exceptions\BinaryNotFoundException;
 use Shipfastlabs\Parsel\Exceptions\InvalidOutputException;
 use Shipfastlabs\Parsel\Exceptions\ParseFailedException;
 use Shipfastlabs\Parsel\Exceptions\SourceNotFoundException;
+use Shipfastlabs\Parsel\Exceptions\UrlDownloadException;
 use Shipfastlabs\Parsel\PendingParse;
 use Shipfastlabs\Parsel\Source;
 use Shipfastlabs\Parsel\Support\BinaryResolver;
@@ -383,3 +384,11 @@ it('downloads the URL before running the process', function (): void {
 
     expect($runner->recordedCommands()[0])->toContain('lit', 'parse', '--format', 'text');
 });
+
+it('throws UrlDownloadException when download fails', function (): void {
+    $runner = new FakeProcessRunner(['--format text' => '']);
+    $filesystem = new FakeFilesystem(downloadException: UrlDownloadException::failedToDownload('https://example.com/doc.pdf'));
+    $parse = new PendingParse(Source::fromUrl('https://example.com/doc.pdf'), $runner, files: $filesystem, binary: 'lit');
+
+    $parse->text();
+})->throws(UrlDownloadException::class);

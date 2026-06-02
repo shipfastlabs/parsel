@@ -62,9 +62,9 @@ final class NativeFilesystem implements Filesystem
         return $files;
     }
 
-    public function download(string $url): string
+    public function download(string $url, ?float $timeout = null): string
     {
-        $context = stream_context_create(['http' => ['timeout' => 30, 'ignore_errors' => true]]);
+        $context = stream_context_create(['http' => ['timeout' => $timeout ?? 30.0]]);
 
         set_error_handler(static fn (): bool => true);
 
@@ -76,6 +76,15 @@ final class NativeFilesystem implements Filesystem
 
         if ($contents === false) {
             throw UrlDownloadException::failedToDownload($url);
+        }
+
+        if (isset($http_response_header[0])) {
+            preg_match('/HTTP\/\S+ (\d{3})/', $http_response_header[0], $matches);
+            $statusCode = (int) ($matches[1] ?? 200);
+
+            if ($statusCode >= 400) {
+                throw UrlDownloadException::httpError($url, $statusCode);
+            }
         }
 
         return $contents;

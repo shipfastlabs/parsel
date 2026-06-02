@@ -320,7 +320,7 @@ final class PendingParse
     {
         if ($this->source->isUrl()) {
             $temporary = $this->files->temporaryPath($this->source->extension);
-            $this->files->put($temporary, $this->files->download($this->source->url()));
+            $this->files->put($temporary, $this->files->download($this->source->url(), $this->timeout));
 
             return [$temporary, $temporary];
         }
