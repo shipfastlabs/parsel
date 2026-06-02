@@ -318,6 +318,13 @@ final class PendingParse
      */
     private function resolveFile(): array
     {
+        if ($this->source->isUrl()) {
+            $temporary = $this->files->temporaryPath($this->source->extension);
+            $this->files->put($temporary, $this->files->download($this->source->url()));
+
+            return [$temporary, $temporary];
+        }
+
         if ($this->source->isBytes()) {
             $temporary = $this->files->temporaryPath($this->source->extension);
             $this->files->put($temporary, $this->source->contents());

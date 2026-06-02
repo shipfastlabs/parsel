@@ -11,6 +11,7 @@ final readonly class FakeFilesystem implements Filesystem
     public function __construct(
         private bool $exists = true,
         private bool $readable = true,
+        private string $downloadResult = '',
     ) {}
 
     public function exists(string $path): bool
@@ -35,5 +36,10 @@ final readonly class FakeFilesystem implements Filesystem
     public function files(string $directory): array
     {
         return [];
+    }
+
+    public function download(string $url): string
+    {
+        return $this->downloadResult;
     }
 }

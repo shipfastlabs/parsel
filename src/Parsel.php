@@ -33,6 +33,16 @@ final class Parsel
         );
     }
 
+    public static function url(string $url): PendingParse
+    {
+        return new PendingParse(
+            Source::fromUrl($url),
+            self::runner(),
+            binary: self::$binary,
+            timeout: self::$timeout,
+        );
+    }
+
     public static function bytes(string $contents, string $extension): PendingParse
     {
         return new PendingParse(

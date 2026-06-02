@@ -20,4 +20,6 @@ interface Filesystem
      * @return list<string>
      */
     public function files(string $directory): array;
+
+    public function download(string $url): string;
 }

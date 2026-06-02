@@ -16,6 +16,7 @@ use Shipfastlabs\Parsel\Support\BinaryResolver;
 use Shipfastlabs\Parsel\Support\FakeProcessRunner;
 use Shipfastlabs\Parsel\Support\ProcessResult;
 use Tests\Doubles\FakeExecutableFinder;
+use Tests\Doubles\FakeFilesystem;
 use Tests\Doubles\FakeJsonOutputRunner;
 
 it('extracts trimmed text', function (): void {
@@ -364,3 +365,21 @@ it('supports backward-compat aliases for renamed methods', function (string $met
     'password alias' => ['password', ['secret'], ['--password', 'secret']],
     'binary alias' => ['binary', ['/custom/lit'], ['/custom/lit']],
 ]);
+
+it('parses text from a URL source', function (): void {
+    $runner = new FakeProcessRunner(['--format text' => 'from url']);
+    $filesystem = new FakeFilesystem(downloadResult: 'fake-pdf-bytes');
+    $parse = new PendingParse(Source::fromUrl('https://example.com/sample.pdf'), $runner, files: $filesystem, binary: 'lit');
+
+    expect($parse->text())->toBe('from url');
+});
+
+it('downloads the URL before running the process', function (): void {
+    $runner = new FakeProcessRunner(['--format text' => 'ok']);
+    $filesystem = new FakeFilesystem(downloadResult: 'pdf-bytes');
+    $parse = new PendingParse(Source::fromUrl('https://example.com/doc.pdf'), $runner, files: $filesystem, binary: 'lit');
+
+    $parse->text();
+
+    expect($runner->recordedCommands()[0])->toContain('lit', 'parse', '--format', 'text');
+});

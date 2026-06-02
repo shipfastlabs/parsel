@@ -6,6 +6,7 @@ namespace Shipfastlabs\Parsel\Support;
 
 use Shipfastlabs\Parsel\Contracts\Filesystem;
 use Shipfastlabs\Parsel\Exceptions\FilesystemException;
+use Shipfastlabs\Parsel\Exceptions\UrlDownloadException;
 
 /**
  * The default {@see Filesystem}, backed by native PHP filesystem functions.
@@ -59,5 +60,24 @@ final class NativeFilesystem implements Filesystem
         sort($files);
 
         return $files;
+    }
+
+    public function download(string $url): string
+    {
+        $context = stream_context_create(['http' => ['timeout' => 30, 'ignore_errors' => true]]);
+
+        set_error_handler(static fn (): bool => true);
+
+        try {
+            $contents = file_get_contents($url, false, $context);
+        } finally {
+            restore_error_handler();
+        }
+
+        if ($contents === false) {
+            throw UrlDownloadException::failedToDownload($url);
+        }
+
+        return $contents;
     }
 }
