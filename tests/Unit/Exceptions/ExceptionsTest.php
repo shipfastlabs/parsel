@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Shipfastlabs\Parsel\Exceptions\BinaryNotFoundException;
 use Shipfastlabs\Parsel\Exceptions\InvalidOutputException;
 use Shipfastlabs\Parsel\Exceptions\ParseFailedException;
+use Shipfastlabs\Parsel\Exceptions\UrlDownloadException;
 use Shipfastlabs\Parsel\Support\ProcessResult;
 
 it('builds a parse failure from a result with stderr', function (): void {
@@ -29,4 +30,14 @@ it('describes invalid output', function (): void {
 it('describes a missing binary', function (): void {
     expect(BinaryNotFoundException::onPath('lit', 'PARSEL_LIT_BINARY')->getMessage())
         ->toContain('lit')->toContain('PARSEL_LIT_BINARY');
+});
+
+it('describes a failed download', function (): void {
+    expect(UrlDownloadException::failedToDownload('https://example.com/f.pdf')->getMessage())
+        ->toContain('https://example.com/f.pdf');
+});
+
+it('describes an http error response', function (): void {
+    expect(UrlDownloadException::httpError('https://example.com/f.pdf', 404)->getMessage())
+        ->toContain('404')->toContain('https://example.com/f.pdf');
 });

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Shipfastlabs\Parsel\Exceptions\SourceNotFoundException;
 use Shipfastlabs\Parsel\Exceptions\SourceNotReadableException;
-use Shipfastlabs\Parsel\Exceptions\UrlDownloadException;
 use Shipfastlabs\Parsel\Source;
 use Tests\Doubles\FakeFilesystem;
 

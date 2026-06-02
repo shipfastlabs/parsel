@@ -14,6 +14,10 @@ it('creates a pending parse from bytes', function (): void {
     expect(Parsel::bytes('rawdata', 'pdf'))->toBeInstanceOf(PendingParse::class);
 });
 
+it('creates a pending parse from a url', function (): void {
+    expect(Parsel::url('https://example.com/report.pdf'))->toBeInstanceOf(PendingParse::class);
+});
+
 it('fakes parsing without requiring a real binary', function (): void {
     $fake = Parsel::fake(['--format text' => 'hello']);
 

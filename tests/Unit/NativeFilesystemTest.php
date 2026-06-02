@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Shipfastlabs\Parsel\Exceptions\FilesystemException;
+use Shipfastlabs\Parsel\Exceptions\UrlDownloadException;
 use Shipfastlabs\Parsel\Support\NativeFilesystem;
 
 it('reports existence and readability', function (): void {
@@ -40,3 +41,13 @@ it('writes, lists and deletes files in a directory', function (): void {
 it('throws when it cannot write', function (): void {
     (new NativeFilesystem)->put('/no/such/directory/file.txt', 'x');
 })->throws(FilesystemException::class);
+
+it('downloads a file via a file:// url', function (): void {
+    $contents = (new NativeFilesystem)->download('file://'.fixture('sample.pdf'));
+
+    expect($contents)->toBeString()->not->toBeEmpty();
+});
+
+it('throws when download returns false', function (): void {
+    (new NativeFilesystem)->download('file:///no/such/file/parsel_test_missing.pdf');
+})->throws(UrlDownloadException::class);
