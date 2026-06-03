@@ -42,7 +42,7 @@ final readonly class FakeFilesystem implements Filesystem
 
     public function download(string $url, ?float $timeout = null): string
     {
-        if ($this->downloadException instanceof \Throwable) {
+        if ($this->downloadException instanceof Throwable) {
             throw $this->downloadException;
         }
 
