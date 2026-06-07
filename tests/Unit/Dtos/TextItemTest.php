@@ -12,8 +12,8 @@ it('maps a full raw item including font and confidence', function (): void {
         'width' => 3.0,
         'height' => 4.0,
         'confidence' => 0.9,
-        'font_name' => 'Arial',
-        'font_size' => 12.0,
+        'fontName' => 'Arial',
+        'fontSize' => 12.0,
     ]);
 
     expect($item->text)->toBe('Hi')
@@ -43,4 +43,16 @@ it('defaults optional fields to null when absent', function (): void {
     expect($item->confidence)->toBeNull()
         ->and($item->fontName)->toBeNull()
         ->and($item->fontSize)->toBeNull();
+});
+
+it('falls back to snake_case font keys', function (): void {
+    $item = TextItem::fromArray([
+        'text' => 'Hi',
+        'x' => 0, 'y' => 0, 'width' => 0, 'height' => 0,
+        'font_name' => 'Helvetica',
+        'font_size' => 10.0,
+    ]);
+
+    expect($item->fontName)->toBe('Helvetica')
+        ->and($item->fontSize)->toBe(10.0);
 });

@@ -22,6 +22,9 @@ final readonly class TextItem
      */
     public static function fromArray(array $raw): self
     {
+        $fontName = Cast::pick($raw, ['fontName', 'font_name']);
+        $fontSize = Cast::pick($raw, ['fontSize', 'font_size']);
+
         return new self(
             text: Cast::str($raw['text'] ?? ''),
             x: Cast::float($raw['x'] ?? 0),
@@ -29,8 +32,8 @@ final readonly class TextItem
             width: Cast::float($raw['width'] ?? 0),
             height: Cast::float($raw['height'] ?? 0),
             confidence: isset($raw['confidence']) ? Cast::float($raw['confidence']) : null,
-            fontName: isset($raw['font_name']) ? Cast::str($raw['font_name']) : null,
-            fontSize: isset($raw['font_size']) ? Cast::float($raw['font_size']) : null,
+            fontName: $fontName !== null ? Cast::str($fontName) : null,
+            fontSize: $fontSize !== null ? Cast::float($fontSize) : null,
         );
     }
 

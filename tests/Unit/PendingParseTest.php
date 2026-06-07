@@ -7,6 +7,7 @@ use Shipfastlabs\Parsel\Contracts\ProcessRunner;
 use Shipfastlabs\Parsel\Data\Document;
 use Shipfastlabs\Parsel\Data\Page;
 use Shipfastlabs\Parsel\Exceptions\BinaryNotFoundException;
+use Shipfastlabs\Parsel\Exceptions\FilesystemException;
 use Shipfastlabs\Parsel\Exceptions\InvalidOutputException;
 use Shipfastlabs\Parsel\Exceptions\ParseFailedException;
 use Shipfastlabs\Parsel\Exceptions\SourceNotFoundException;
@@ -46,6 +47,18 @@ it('parses into a structured document', function (): void {
         ->and($document->pages[0]->items[0]->text)->toBe('UNITED STATES');
 });
 
+it('populates text items and font data from camelCase binary output', function (): void {
+    Parsel::fake(['--format json' => fixtureContents('liteparse-output.json')]);
+
+    $document = Parsel::file(fixture('sample.pdf'))->parse();
+    $item = $document->pages[0]->items[0];
+
+    expect($document->pages[0]->items)->not->toBeEmpty()
+        ->and($item->text)->toBe('UNITED STATES')
+        ->and($item->fontName)->toBe('AAAGYH+HelveticaLTStd-Bold')
+        ->and($item->fontSize)->toBe(13.0);
+});
+
 it('returns the document as an array', function (): void {
     Parsel::fake(['--format json' => fixtureContents('liteparse-output.json')]);
 
@@ -57,7 +70,7 @@ it('saves liteparse json verbatim by extension', function (): void {
     $out = sys_get_temp_dir().DIRECTORY_SEPARATOR.'parsel_save_'.uniqid().'.json';
 
     expect(Parsel::file(fixture('sample.pdf'))->save($out))->toBe($out)
-        ->and(file_get_contents($out))->toContain('"text_items"');
+        ->and(file_get_contents($out))->toContain('"textItems"');
 
     unlink($out);
 });
@@ -98,7 +111,7 @@ it('streams pages lazily from a bytes source', function (): void {
 });
 
 it('skips non-array page entries while streaming', function (): void {
-    $runner = new FakeJsonOutputRunner('{"pages":["bad",{"page":1,"text":"a","text_items":[]}]}');
+    $runner = new FakeJsonOutputRunner('{"pages":["bad",{"page":1,"text":"a","textItems":[]}]}');
     $parse = new PendingParse(Source::fromPath(fixture('sample.pdf')), $runner, binary: 'lit');
 
     expect(iterator_to_array($parse->lazyPages()))->toHaveCount(1);
@@ -110,6 +123,12 @@ it('throws when the streaming process fails', function (): void {
 
     iterator_to_array($parse->lazyPages());
 })->throws(ParseFailedException::class);
+
+it('throws when the screenshot directory does not exist', function (): void {
+    Parsel::fake(['screenshot' => '']);
+
+    Parsel::file(fixture('sample.pdf'))->screenshots('/non/existent/directory');
+})->throws(FilesystemException::class);
 
 it('builds the screenshot argv including extra options', function (): void {
     $fake = new FakeProcessRunner(['screenshot' => '']);

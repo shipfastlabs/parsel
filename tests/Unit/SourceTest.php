@@ -39,6 +39,14 @@ it('rejects an empty extension for byte sources', function (): void {
     Source::fromBytes('data', '.');
 })->throws(InvalidArgumentException::class);
 
+it('rejects an empty path', function (): void {
+    Source::fromPath('');
+})->throws(InvalidArgumentException::class);
+
+it('rejects a whitespace-only path', function (): void {
+    Source::fromPath('   ');
+})->throws(InvalidArgumentException::class);
+
 it('rejects a whitespace-only extension for byte sources', function (): void {
     Source::fromBytes('data', '   ');
 })->throws(InvalidArgumentException::class);

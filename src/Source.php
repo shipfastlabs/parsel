@@ -19,6 +19,10 @@ final readonly class Source
 
     public static function fromPath(string $path): self
     {
+        if (trim($path) === '') {
+            throw new InvalidArgumentException('A non-empty file path is required.');
+        }
+
         return new self(strtolower(pathinfo($path, PATHINFO_EXTENSION)), $path, null);
     }
 

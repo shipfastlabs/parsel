@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Shipfastlabs\Parsel\Data;
 
+use Shipfastlabs\Parsel\Exceptions\PageNotFoundException;
+
 final readonly class Document
 {
     /**
@@ -71,6 +73,30 @@ final readonly class Document
     public function pageCount(): int
     {
         return count($this->pages);
+    }
+
+    /**
+     * @throws PageNotFoundException
+     */
+    public function page(int $number): Page
+    {
+        return $this->find($number) ?? throw PageNotFoundException::forNumber($number);
+    }
+
+    public function hasPage(int $number): bool
+    {
+        return $this->find($number) instanceof Page;
+    }
+
+    private function find(int $number): ?Page
+    {
+        foreach ($this->pages as $page) {
+            if ($page->number === $number) {
+                return $page;
+            }
+        }
+
+        return null;
     }
 
     /**

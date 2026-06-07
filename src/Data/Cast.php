@@ -23,4 +23,19 @@ final class Cast
     {
         return is_numeric($value) ? (float) $value : 0.0;
     }
+
+    /**
+     * @param  array<string, mixed>  $raw
+     * @param  list<string>  $keys
+     */
+    public static function pick(array $raw, array $keys): mixed
+    {
+        foreach ($keys as $key) {
+            if (isset($raw[$key])) {
+                return $raw[$key];
+            }
+        }
+
+        return null;
+    }
 }

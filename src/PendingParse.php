@@ -13,6 +13,7 @@ use Shipfastlabs\Parsel\Contracts\ProcessRunner;
 use Shipfastlabs\Parsel\Data\Document;
 use Shipfastlabs\Parsel\Data\Page;
 use Shipfastlabs\Parsel\Enums\OutputFormat;
+use Shipfastlabs\Parsel\Exceptions\FilesystemException;
 use Shipfastlabs\Parsel\Exceptions\InvalidOutputException;
 use Shipfastlabs\Parsel\Exceptions\ParseFailedException;
 use Shipfastlabs\Parsel\Support\BinaryResolver;
@@ -202,6 +203,10 @@ final class PendingParse
      */
     public function screenshots(string $directory): array
     {
+        if (! $this->files->exists($directory)) {
+            throw FilesystemException::directoryNotFound($directory);
+        }
+
         $this->runFor(fn (string $binary, string $file): array => $this->screenshotArgv($binary, $file, $directory));
 
         return $this->files->files($directory);
