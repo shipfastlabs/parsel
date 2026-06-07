@@ -45,7 +45,7 @@ jobs:
       run: composer update --${{ matrix.dependency-version }} --no-interaction --prefer-dist
 
     - name: Install liteparse
-      run: npm install -g @llamaindex/liteparse
+      run: composer install-lit
 
     - name: Unit Tests
       run: composer test:unit
