@@ -24,6 +24,16 @@ final class Cast
         return is_numeric($value) ? (float) $value : 0.0;
     }
 
+    public static function nullableFloat(mixed $value): ?float
+    {
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    public static function nullableStr(mixed $value): ?string
+    {
+        return is_string($value) ? $value : null;
+    }
+
     /**
      * @param  array<string, mixed>  $raw
      * @param  list<string>  $keys

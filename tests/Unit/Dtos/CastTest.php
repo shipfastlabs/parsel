@@ -21,3 +21,11 @@ it('casts numeric values to float', function (): void {
         ->and(Cast::float(2))->toBe(2.0)
         ->and(Cast::float([]))->toBe(0.0);
 });
+
+it('casts nullable floats and strings', function (): void {
+    expect(Cast::nullableFloat('1.5'))->toBe(1.5)
+        ->and(Cast::nullableFloat(null))->toBeNull()
+        ->and(Cast::nullableFloat('x'))->toBeNull()
+        ->and(Cast::nullableStr('a'))->toBe('a')
+        ->and(Cast::nullableStr(1))->toBeNull();
+});

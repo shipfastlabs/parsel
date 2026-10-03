@@ -1,0 +1,148 @@
+{
+    "pages": [
+        {
+            "page": 1,
+            "width": 612,
+            "height": 792,
+            "content_bounds": {
+                "x": 48.869998931884766,
+                "y": 41.75,
+                "width": 514.25,
+                "height": 677.1420288085938
+            },
+            "text": "UNITED STATES\nSECURITIES AND EXCHANGE COMMISSION",
+            "text_items": [
+                {
+                    "text": "UNITED STATES",
+                    "x": 254.3800048828125,
+                    "y": 58.10601806640625,
+                    "width": 103.28500366210938,
+                    "height": 12.68798828125,
+                    "rotation": 0,
+                    "font_name": "AAAGYH+HelveticaLTStd-Bold",
+                    "font_size": 13,
+                    "font_height": 13,
+                    "font_ascent": 9.333999633789062,
+                    "font_descent": -3.6659998893737793,
+                    "font_weight": 700,
+                    "text_width": 99.6709976196289,
+                    "font_is_buggy": false,
+                    "fill_color": "ff000000",
+                    "stroke_color": "ff000000",
+                    "char_codes": [
+                        56,
+                        49,
+                        44
+                    ],
+                    "confidence": 1
+                },
+                {
+                    "text": "SECURITIES AND EXCHANGE COMMISSION",
+                    "x": 168.11000061035156,
+                    "y": 73.70599365234375,
+                    "width": 275.91204833984375,
+                    "height": 12.68798828125,
+                    "rotation": 0,
+                    "font_name": "AAAGYH+HelveticaLTStd-Bold",
+                    "font_size": 13,
+                    "font_height": 13,
+                    "font_ascent": 9.333999633789062,
+                    "font_descent": -3.6659998893737793,
+                    "font_weight": 700,
+                    "text_width": 265.0699768066406,
+                    "font_is_buggy": false,
+                    "fill_color": "ff000000",
+                    "stroke_color": "ff000000",
+                    "char_codes": [
+                        54,
+                        40,
+                        38
+                    ],
+                    "confidence": 1
+                }
+            ],
+            "complexity": {
+                "page_number": 1,
+                "text_length": 1654,
+                "text_coverage": 0.14717023074626923,
+                "has_substantial_images": true,
+                "image_block_count": 1,
+                "image_coverage": 0.0018939394503831863,
+                "largest_image_coverage": 0.0018939394503831863,
+                "full_page_image": false,
+                "is_garbled": false,
+                "page_area": 484704,
+                "needs_ocr": true,
+                "reasons": [
+                    "sparse-text",
+                    "embedded-images"
+                ],
+                "layout": {
+                    "column_count": 1,
+                    "ruled_table_count": 1,
+                    "ruled_table_coverage": 0.0766654834151268,
+                    "text_table_run_count": 1,
+                    "figure_count": 0,
+                    "figure_coverage": 0,
+                    "is_complex": true,
+                    "reasons": [
+                        "table-likely"
+                    ]
+                }
+            },
+            "vector_graphics": {
+                "shapes": [
+                    {
+                        "bbox": {
+                            "x": 48.869998931884766,
+                            "y": 41.75,
+                            "width": 514.25,
+                            "height": 2
+                        },
+                        "stroke": true,
+                        "stroke_color": "ff000000",
+                        "fill": true,
+                        "fill_color": "00000000",
+                        "has_curve": false
+                    }
+                ],
+                "lines": [
+                    {
+                        "x1": 49.869998931884766,
+                        "y1": 42.75,
+                        "x2": 562.1199951171875,
+                        "y2": 42.75,
+                        "stroke": true,
+                        "stroke_width": 1,
+                        "stroke_color": "ff000000",
+                        "fill": true,
+                        "fill_color": "00000000"
+                    }
+                ]
+            },
+            "annotations": [],
+            "form_fields": [],
+            "structure_tree": {
+                "roots": []
+            }
+        }
+    ],
+    "images": [
+        {
+            "id": "p1_1",
+            "name": "img_p1_1.jpg",
+            "page": 1,
+            "bbox": {
+                "x": 292.5,
+                "y": 264.75,
+                "width": 27,
+                "height": 34
+            },
+            "width": 46,
+            "height": 56,
+            "rotation": 0,
+            "format": "jpg"
+        }
+    ],
+    "form_type": 0
+}

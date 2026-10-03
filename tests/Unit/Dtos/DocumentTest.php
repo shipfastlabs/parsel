@@ -98,3 +98,41 @@ it('reports whether a page number exists', function (): void {
     expect($doc->hasPage(1))->toBeTrue()
         ->and($doc->hasPage(99))->toBeFalse();
 });
+
+it('maps rich liteparse json produced with every extract flag', function (): void {
+    /** @var array<string, mixed> $decoded */
+    $decoded = json_decode(fixtureContents('liteparse-output-rich.json'), true);
+
+    $doc = Document::fromLiteParseJson($decoded);
+    $page = $doc->page(1);
+    $item = $page->items[0];
+
+    expect($item->text)->toBe('UNITED STATES')
+        ->and($item->rotation)->toBe(0.0)
+        ->and($item->fontWeight)->toBe(700.0)
+        ->and($item->fontHeight)->toBe(13.0)
+        ->and($item->fillColor)->toBe('ff000000')
+        ->and($page->contentBounds?->width)->toBe(514.25)
+        ->and($page->complexity)->toHaveKey('needs_ocr', true)
+        ->and($page->annotations)->toBe([])
+        ->and($page->formFields)->toBe([])
+        ->and($page->structureTree)->toBe(['roots' => []])
+        ->and($page->vectorGraphics)->toHaveKeys(['shapes', 'lines'])
+        ->and($doc->images())->toHaveCount(1)
+        ->and($doc->images()[0])->toHaveKey('format', 'jpg')
+        ->and($doc->formType())->toBe(0)
+        ->and($doc->metadata)->toHaveKeys(['images', 'form_type']);
+});
+
+it('returns no images or form type when absent or malformed', function (): void {
+    $doc = Document::fromLiteParseJson(['pages' => []]);
+    $malformed = Document::fromLiteParseJson(['pages' => [], 'images' => 'nope', 'form_type' => 'x']);
+    $mixed = Document::fromLiteParseJson(['pages' => [], 'images' => ['bad', ['id' => 'p1_1']], 'formType' => '2']);
+
+    expect($doc->images())->toBe([])
+        ->and($doc->formType())->toBeNull()
+        ->and($malformed->images())->toBe([])
+        ->and($malformed->formType())->toBeNull()
+        ->and($mixed->images())->toBe([['id' => 'p1_1']])
+        ->and($mixed->formType())->toBe(2);
+});
