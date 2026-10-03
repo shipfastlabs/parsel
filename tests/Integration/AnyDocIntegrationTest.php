@@ -3,38 +3,57 @@
 declare(strict_types=1);
 
 use Shipfastlabs\Parsel;
-use Shipfastlabs\Parsel\Exceptions\BinaryNotFoundException;
-use Shipfastlabs\Parsel\Support\BinaryResolver;
+use Shipfastlabs\Parsel\Exceptions\ParseFailedException;
+use Shipfastlabs\Parsel\Options\AnyDocOptions;
 
-function anydocAvailable(): bool
+beforeEach(function (): void {
+    requireBinary($this, 'anydoc', 'PARSEL_ANYDOC_BINARY');
+});
+
+function anydocSample(string $extension): string
 {
-    try {
-        new BinaryResolver(name: 'anydoc', envVar: 'PARSEL_ANYDOC_BINARY')->resolve();
-
-        return true;
-    } catch (BinaryNotFoundException) {
-        return false;
-    }
+    return __DIR__.'/../../examples/docs/sample.'.$extension;
 }
 
 it('converts a real document to markdown with anydoc', function (): void {
-    if (! anydocAvailable()) {
-        $this->markTestSkipped('anydoc binary not installed');
-    }
-
     $markdown = Parsel::driver('anydoc')
-        ->file(__DIR__.'/../../examples/docs/sample.docx')
+        ->file(anydocSample('docx'))
         ->markdown();
 
-    expect($markdown)->not->toBeEmpty();
+    expect($markdown)->toContain('Heading 1');
+})->group('integration');
+
+it('converts a real spreadsheet to markdown with anydoc', function (): void {
+    $markdown = Parsel::driver('anydoc')
+        ->file(anydocSample('xlsx'))
+        ->markdown();
+
+    expect($markdown)->toContain('Contoso Sales Report');
+})->group('integration');
+
+it('names the input format with --format', function (string $extension, string $format, string $expected): void {
+    $markdown = Parsel::driver('anydoc')
+        ->file(anydocSample($extension))
+        ->withProviderOptions(AnyDocOptions::make()->format($format))
+        ->markdown();
+
+    expect($markdown)->toContain($expected);
+})->with([
+    'docx' => ['docx', 'docx', 'Heading 1'],
+    'pdf with a normalized extension' => ['pdf', '.PDF', 'UNITED STATES'],
+])->group('integration');
+
+it('surfaces a rejected --format as a parse failure', function (): void {
+    $parse = fn (): string => Parsel::driver('anydoc')
+        ->file(anydocSample('docx'))
+        ->withProviderOptions(AnyDocOptions::make()->format('bogus'))
+        ->markdown();
+
+    expect($parse)->toThrow(ParseFailedException::class, "invalid format 'bogus'");
 })->group('integration');
 
 it('streams real document bytes to anydoc through stdin', function (string $extension, string $expected): void {
-    if (! anydocAvailable()) {
-        $this->markTestSkipped('anydoc binary not installed');
-    }
-
-    $bytes = (string) file_get_contents(__DIR__.'/../../examples/docs/sample.'.$extension);
+    $bytes = (string) file_get_contents(anydocSample($extension));
 
     $markdown = Parsel::driver('anydoc')->bytes($bytes, $extension)->markdown();
 
@@ -46,10 +65,6 @@ it('streams real document bytes to anydoc through stdin', function (string $exte
 ])->group('integration');
 
 it('streams real csv bytes to anydoc with an inferred format', function (): void {
-    if (! anydocAvailable()) {
-        $this->markTestSkipped('anydoc binary not installed');
-    }
-
     $markdown = Parsel::driver('anydoc')->bytes("name,qty\nwidget,2\n", 'csv')->markdown();
 
     expect($markdown)->toContain('| name | qty |', '| widget | 2 |');
