@@ -6,6 +6,7 @@ namespace Shipfastlabs\Parsel\Options;
 
 use Shipfastlabs\Parsel\Contracts\ProviderOptions;
 use Shipfastlabs\Parsel\Enums\ImageMode;
+use Shipfastlabs\Parsel\Exceptions\InvalidProviderOptionsException;
 
 final class LiteParseOptions implements ProviderOptions
 {
@@ -61,11 +62,13 @@ final class LiteParseOptions implements ProviderOptions
         return $this;
     }
 
+    /** @param  array<string, string>  $headers */
     public function withOcr(
         ?string $language = null,
         ?string $tessdataPath = null,
         ?string $serverUrl = null,
         ?int $workers = null,
+        array $headers = [],
     ): self {
         $this->options['ocr'] = true;
 
@@ -74,6 +77,26 @@ final class LiteParseOptions implements ProviderOptions
                 $this->options[$key] = $value;
             }
         }
+
+        foreach ($headers as $name => $value) {
+            $this->withOcrServerHeader($name, $value);
+        }
+
+        return $this;
+    }
+
+    public function withOcrServerHeader(string $name, string $value): self
+    {
+        $name = trim($name);
+
+        if ($name === '' || str_contains($name, ':') || preg_match('/[\r\n]/', $name.$value) === 1) {
+            throw InvalidProviderOptionsException::invalidOcrServerHeader($name);
+        }
+
+        /** @var array<string, string> $headers */
+        $headers = $this->options['ocr_server_headers'] ?? [];
+        $headers[$name] = trim($value);
+        $this->options['ocr_server_headers'] = $headers;
 
         return $this;
     }
@@ -135,6 +158,20 @@ final class LiteParseOptions implements ProviderOptions
     public function keepHeadersAndFooters(bool $keep = true): self
     {
         $this->options['keep_headers_and_footers'] = $keep;
+
+        return $this;
+    }
+
+    public function continueOnPageError(bool $continue = true): self
+    {
+        $this->options['continue_on_page_error'] = $continue;
+
+        return $this;
+    }
+
+    public function withConfig(string $path): self
+    {
+        $this->options['config'] = $path;
 
         return $this;
     }

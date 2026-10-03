@@ -41,6 +41,31 @@ it('builds disabled liteparse options without an extra bucket', function (): voi
     ])->not->toHaveKey('extra')->not->toHaveKey('screenshot_extra');
 });
 
+it('builds OCR server header, page error and config liteparse options', function (): void {
+    $options = LiteParseOptions::make()
+        ->withOcr(headers: ['Authorization' => ' Bearer token '])
+        ->withOcrServerHeader(' X-Tenant ', 'acme')
+        ->withOcrServerHeader('X-Tenant', 'override')
+        ->continueOnPageError()
+        ->withConfig('/liteparse.json');
+
+    expect($options->toArray())->toBe([
+        'ocr' => true,
+        'ocr_server_headers' => ['Authorization' => 'Bearer token', 'X-Tenant' => 'override'],
+        'continue_on_page_error' => true,
+        'config' => '/liteparse.json',
+    ]);
+});
+
+it('rejects invalid OCR server headers', function (string $name, string $value): void {
+    LiteParseOptions::make()->withOcrServerHeader($name, $value);
+})->throws(InvalidProviderOptionsException::class, 'Invalid OCR server header')->with([
+    'empty name' => ['  ', 'value'],
+    'colon in name' => ['X-Key: abc', 'value'],
+    'line break in name' => ["X-Key\nX-Other", 'value'],
+    'line break in value' => ['X-Key', "abc\r\nX-Injected: 1"],
+]);
+
 it('builds anydoc options fluently', function (): void {
     $options = AnyDocOptions::make()->format('.CSV')->withBinary('/anydoc')->option('future', 2);
 

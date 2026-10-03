@@ -32,7 +32,8 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
     private const array OPTION_KEYS = [
         'pages', 'max_pages', 'ocr', 'ocr_language', 'ocr_server_url', 'tessdata_path', 'workers', 'dpi',
         'preserve_small_text', 'password', 'image_mode', 'image_directory', 'links',
-        'keep_headers_and_footers', 'binary', 'extra', 'screenshot_extra',
+        'keep_headers_and_footers', 'ocr_server_headers', 'continue_on_page_error', 'config', 'binary', 'extra',
+        'screenshot_extra',
     ];
 
     public function __construct(
@@ -176,10 +177,31 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
             return null;
         }
 
+        $settings = $this->userConfig($this->string($options, 'config'));
+
+        if ($settings === null) {
+            return null;
+        }
+
         $path = $this->files->temporaryPath('json');
-        $this->files->put($path, json_encode(['tessdataPath' => $tessdata], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+        $this->files->put($path, json_encode([...$settings, 'tessdataPath' => $tessdata], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
 
         return $path;
+    }
+
+    /**
+     * @return array<array-key, mixed>|null
+     */
+    private function userConfig(?string $path): ?array
+    {
+        if ($path === null) {
+            return [];
+        }
+
+        $contents = is_file($path) && is_readable($path) ? file_get_contents($path) : false;
+        $decoded = is_string($contents) ? json_decode($contents, true) : null;
+
+        return is_array($decoded) ? $decoded : null;
     }
 
     private function deleteConfig(?string $config): void
@@ -237,13 +259,18 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
         $command = $this->appendFlag($command, 'target-pages', $this->scalar($options, 'pages'));
         $command = $this->appendFlag($command, 'max-pages', $this->scalar($options, 'max_pages'));
         $command = $this->appendFlag($command, 'password', $this->scalar($options, 'password'));
+        $command = $this->appendFlag($command, 'config', $config ?? $this->string($options, 'config'));
+
+        if (($options['continue_on_page_error'] ?? false) === true) {
+            $command[] = '--continue-on-page-error';
+        }
 
         if (($options['ocr'] ?? false) !== true) {
             $command[] = '--no-ocr';
         } else {
             $command = $this->appendFlag($command, 'ocr-language', $this->scalar($options, 'ocr_language'));
             $command = $this->appendFlag($command, 'ocr-server-url', $this->scalar($options, 'ocr_server_url'));
-            $command = $this->appendFlag($command, 'config', $config);
+            $command = $this->appendOcrServerHeaders($command, $options['ocr_server_headers'] ?? []);
             $command = $this->appendFlag($command, 'num-workers', $this->scalar($options, 'workers'));
         }
 
@@ -278,6 +305,26 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
         if ($value !== null) {
             $command[] = '--'.$name;
             $command[] = (string) $value;
+        }
+
+        return $command;
+    }
+
+    /**
+     * @param  list<string>  $command
+     * @return list<string>
+     */
+    private function appendOcrServerHeaders(array $command, mixed $headers): array
+    {
+        if (! is_array($headers)) {
+            return $command;
+        }
+
+        foreach ($headers as $name => $value) {
+            if (is_string($value)) {
+                $command[] = '--ocr-server-header';
+                $command[] = $name.': '.$value;
+            }
         }
 
         return $command;
