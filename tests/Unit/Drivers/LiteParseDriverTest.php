@@ -263,6 +263,16 @@ it('stops a slow binary at the configured timeout and removes temporary files', 
 
     expect(glob(sys_get_temp_dir().DIRECTORY_SEPARATOR.'parsel_*.pdf') ?: [])->toBe($before);
 })->skipOnWindows();
+it('does not apply anydoc exit code mapping to liteparse failures', function (int $exitCode): void {
+    $failed = new FakeProcessRunner(['parse' => new ProcessResult($exitCode, '', 'boom', ['lit', 'parse'])]);
+
+    try {
+        fakeParse($failed)->text();
+        $this->fail('Expected parsing to fail.');
+    } catch (ParseFailedException $parseFailedException) {
+        expect($parseFailedException::class)->toBe(ParseFailedException::class);
+    }
+})->with([2, 3]);
 
 it('validates sources before starting a process', function (): void {
     $unused = new FakeProcessRunner;
