@@ -24,3 +24,19 @@ it('pipes input to the process stdin', function (): void {
 
     expect($result->stdout)->toBe('piped-in');
 });
+
+it('reports a timed out process instead of throwing', function (): void {
+    $result = (new SymfonyProcessRunner)->run([PHP_BINARY, '-r', 'sleep(5);'], null, 0.2);
+
+    expect($result->timedOut())->toBeTrue()
+        ->and($result->timedOutAfter)->toBe(0.2)
+        ->and($result->successful())->toBeFalse()
+        ->and($result->command)->toBe([PHP_BINARY, '-r', 'sleep(5);']);
+});
+
+it('does not flag a process that finishes within its timeout', function (): void {
+    $result = (new SymfonyProcessRunner)->run([PHP_BINARY, '-r', 'echo "ok";'], null, 10.0);
+
+    expect($result->timedOut())->toBeFalse()
+        ->and($result->timedOutAfter)->toBeNull();
+});
