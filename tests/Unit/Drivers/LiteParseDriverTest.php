@@ -14,6 +14,7 @@ use Shipfastlabs\Parsel\Options\LiteParseOptions;
 use Shipfastlabs\Parsel\ParselManager;
 use Shipfastlabs\Parsel\Support\FakeProcessRunner;
 use Shipfastlabs\Parsel\Support\ProcessResult;
+use Tests\Doubles\ConfigCapturingRunner;
 use Tests\Doubles\FakeJsonOutputRunner;
 
 it('returns text markdown structured documents and arrays', function (): void {
@@ -49,11 +50,46 @@ it('maps all typed options to the appropriate CLI flags', function (): void {
 
     expect($fake->recordedCommands()[0])->toContain(
         '--target-pages', '1,3-4,7-8,10', '--max-pages', '50',
-        '--ocr-language', 'fra', '--tessdata-path', '/tess', '--ocr-server-url', 'http://ocr', '--num-workers', '8',
+        '--ocr-language', 'fra', '--config', '--ocr-server-url', 'http://ocr', '--num-workers', '8',
         '--dpi', '300', '--preserve-small-text', '--password', 'secret',
         '--image-mode', 'embed', '--image-output-dir', '/images', '--no-links', '--keep-headers-footers',
         '--experimental', '--threads', '4',
-    )->not->toContain('--no-ocr', '--ignored');
+    )->not->toContain('--no-ocr', '--ignored', '--tessdata-path');
+});
+
+it('passes the tessdata path through a temporary LiteParse config file', function (): void {
+    $runner = new ConfigCapturingRunner;
+
+    $text = new ParselManager(process: $runner, binaries: ['liteparse' => 'lit'])
+        ->file(fixture('sample.pdf'))
+        ->withProviderOptions(LiteParseOptions::make()->withOcr(tessdataPath: '/usr/share/tessdata'))
+        ->text();
+
+    expect($text)->toBe('ok')
+        ->and($runner->configContents)->toBe('{"tessdataPath":"/usr/share/tessdata"}')
+        ->and($runner->configPath)->not->toBeNull()
+        ->and(file_exists((string) $runner->configPath))->toBeFalse();
+});
+
+it('passes the tessdata config file when streaming pages', function (): void {
+    $runner = new ConfigCapturingRunner;
+
+    $pages = iterator_to_array(new ParselManager(process: $runner, binaries: ['liteparse' => 'lit'])
+        ->file(fixture('sample.pdf'))
+        ->withProviderOptions(['ocr' => true, 'tessdata_path' => '/tess'])
+        ->lazyPages());
+
+    expect($pages)->toBe([])
+        ->and($runner->configContents)->toBe('{"tessdataPath":"/tess"}')
+        ->and(file_exists((string) $runner->configPath))->toBeFalse();
+});
+
+it('ignores the tessdata path when OCR is disabled', function (): void {
+    $fake = new FakeProcessRunner(['--format text' => 'ok']);
+
+    fakeParse($fake)->withProviderOptions(LiteParseOptions::make()->withOcr(tessdataPath: '/tess')->withoutOcr())->text();
+
+    expect($fake->recordedCommands()[0])->toContain('--no-ocr')->not->toContain('--config', '--tessdata-path');
 });
 
 it('omits disabled and format-inapplicable options', function (): void {

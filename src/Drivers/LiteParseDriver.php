@@ -109,6 +109,7 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
         $output = $this->files->temporaryPath('json');
         $options = $request->options;
         $binary = $this->resolver->resolve($this->string($options, 'binary') ?? $this->configuredBinary);
+        $config = $this->writeConfig($options);
 
         try {
             $this->process->run(
@@ -126,6 +127,7 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
             }
         } finally {
             $this->files->delete($output);
+            $this->deleteConfig($config);
         }
     }
 
@@ -133,13 +135,42 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
     {
         $options = $request->options;
         $binary = $this->resolver->resolve($this->string($options, 'binary') ?? $this->configuredBinary);
+        $config = $this->writeConfig($options);
 
-        return $this->process->run(
-            $request->source,
-            fn (string $file): array => $this->parseArgv($binary, $file, $format, $options),
-            $request->timeout,
-            $this->name(),
-        )->stdout;
+        try {
+            return $this->process->run(
+                $request->source,
+                fn (string $file): array => $this->parseArgv($binary, $file, $format, $options, config: $config),
+                $request->timeout,
+                $this->name(),
+            )->stdout;
+        } finally {
+            $this->deleteConfig($config);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private function writeConfig(array $options): ?string
+    {
+        $tessdata = $this->string($options, 'tessdata_path');
+
+        if (($options['ocr'] ?? false) !== true || $tessdata === null) {
+            return null;
+        }
+
+        $path = $this->files->temporaryPath('json');
+        $this->files->put($path, json_encode(['tessdataPath' => $tessdata], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
+
+        return $path;
+    }
+
+    private function deleteConfig(?string $config): void
+    {
+        if ($config !== null) {
+            $this->files->delete($config);
+        }
     }
 
     /** @return array<string, mixed> */
@@ -167,7 +198,7 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
      * @param  array<string, mixed>  $options
      * @return list<string>
      */
-    private function parseArgv(string $binary, string $file, OutputFormat $format, array $options, ?string $output = null): array
+    private function parseArgv(string $binary, string $file, OutputFormat $format, array $options, ?string $output = null, ?string $config = null): array
     {
         $command = CliArguments::command($binary, 'parse', $file, '--format', $format->value, '-q');
 
@@ -185,7 +216,7 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
         } else {
             $command = $this->appendFlag($command, 'ocr-language', $this->scalar($options, 'ocr_language'));
             $command = $this->appendFlag($command, 'ocr-server-url', $this->scalar($options, 'ocr_server_url'));
-            $command = $this->appendFlag($command, 'tessdata-path', $this->scalar($options, 'tessdata_path'));
+            $command = $this->appendFlag($command, 'config', $config);
             $command = $this->appendFlag($command, 'num-workers', $this->scalar($options, 'workers'));
         }
 

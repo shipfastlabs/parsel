@@ -135,6 +135,12 @@ $document = Parsel::file('invoice.pdf')
 
 LiteParse options include page selection, maximum pages, OCR settings, DPI, small-text preservation, passwords, Markdown images and links, headers and footers, and a binary override.
 
+To OCR with local Tesseract language data instead of letting LiteParse download it, point `tessdataPath` at a directory containing `<language>.traineddata` files. LiteParse no longer has a `--tessdata-path` flag, so Parsel passes this through a temporary `--config` file that is removed after the parse (avoid also passing your own `--config` via `option()`, as LiteParse only reads one).
+
+```php
+LiteParseOptions::make()->withOcr(language: 'eng', tessdataPath: '/usr/share/tessdata');
+```
+
 ```php
 use Shipfastlabs\Parsel\Enums\ImageMode;
 
