@@ -329,3 +329,38 @@ it('screenshots a real pdf without forwarding parse-only extra options', functio
         removeIntegrationDirectory($directory);
     }
 })->group('integration');
+
+it('sends custom headers to an OCR server', function (): void {
+    $log = (string) tempnam(sys_get_temp_dir(), 'parsel-ocr');
+    [$server, $url] = startFakeOcrServer($log);
+
+    try {
+        $text = Parsel::file(demoPdf())
+            ->withProviderOptions(LiteParseOptions::make()->page(1)
+                ->withOcr(serverUrl: $url, workers: 1, headers: ['Authorization' => 'Bearer parsel-token'])
+                ->withOcrServerHeader('X-Tenant', 'acme'))
+            ->text();
+
+        expect($text)->toContain('PARSELOCRMARKER')
+            ->and((string) file_get_contents($log))->toContain('"authorization":"Bearer parsel-token"')
+            ->and((string) file_get_contents($log))->toContain('"x-tenant":"acme"');
+    } finally {
+        $server->stop();
+        unlink($log);
+    }
+})->group('integration');
+
+it('loads a liteparse config file and tolerates page errors', function (): void {
+    $config = (string) tempnam(sys_get_temp_dir(), 'parsel-lit-config');
+    file_put_contents($config, '{"maxPages": 1}');
+
+    try {
+        $document = Parsel::file(demoPdf())
+            ->withProviderOptions(LiteParseOptions::make()->withoutOcr()->withConfig($config)->continueOnPageError())
+            ->parse();
+    } finally {
+        unlink($config);
+    }
+
+    expect($document->pageCount())->toBe(1);
+})->group('integration');

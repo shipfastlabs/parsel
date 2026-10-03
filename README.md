@@ -181,9 +181,9 @@ $text = Parsel::file('receipt.png')
 
 LiteParse's built-in Tesseract OCR downloads language data from GitHub on first use, so the first OCR run needs network access. Use `withOcr(serverUrl: ...)` to send pages to an HTTP OCR server instead.
 
-LiteParse options include page selection, maximum pages, OCR settings, DPI, small-text preservation, passwords, Markdown images and links, headers and footers, and a binary override.
+LiteParse options include page selection, maximum pages, OCR settings (including OCR server headers), page-error recovery, config files, DPI, small-text preservation, passwords, Markdown images and links, headers and footers, and a binary override.
 
-To OCR with local Tesseract language data instead of letting LiteParse download it, point `tessdataPath` at a directory containing `<language>.traineddata` files. LiteParse no longer has a `--tessdata-path` flag, so Parsel passes this through a temporary `--config` file that is removed after the parse (avoid also passing your own `--config` via `option()`, as LiteParse only reads one).
+To OCR with local Tesseract language data instead of letting LiteParse download it, point `tessdataPath` at a directory containing `<language>.traineddata` files. LiteParse no longer has a `--tessdata-path` flag, so Parsel passes this through a temporary `--config` file that is removed after the parse. LiteParse reads only one config file, so when you also use `withConfig()`, Parsel copies your settings into that temporary file together with `tessdataPath`.
 
 ```php
 LiteParseOptions::make()->withOcr(language: 'eng', tessdataPath: '/usr/share/tessdata');
@@ -201,6 +201,29 @@ $markdown = Parsel::file('report.pdf')
             ->keepHeadersAndFooters()
     )
     ->markdown();
+```
+
+Remote OCR servers can receive extra request headers (sent only when OCR is enabled), damaged pages can be skipped instead of failing the whole parse, and a LiteParse JSON config file can be loaded. Options set through Parsel are passed as CLI flags, so they take precedence over the config file.
+
+```php
+$document = Parsel::file('scan.pdf')
+    ->withProviderOptions(
+        LiteParseOptions::make()
+            ->withOcr(serverUrl: 'https://ocr.example.com', headers: ['Authorization' => 'Bearer '.$token])
+            ->withOcrServerHeader('X-Tenant', 'acme')
+            ->continueOnPageError()
+            ->withConfig('/path/to/liteparse.json')
+    )
+    ->parse();
+
+// Equivalent strict array keys
+$options = [
+    'ocr' => true,
+    'ocr_server_url' => 'https://ocr.example.com',
+    'ocr_server_headers' => ['Authorization' => 'Bearer '.$token],
+    'continue_on_page_error' => true,
+    'config' => '/path/to/liteparse.json',
+];
 ```
 
 AnyDoc supports explicit input format and binary overrides:
