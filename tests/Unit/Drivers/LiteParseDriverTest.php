@@ -9,11 +9,13 @@ use Shipfastlabs\Parsel\Enums\ImageMode;
 use Shipfastlabs\Parsel\Exceptions\FilesystemException;
 use Shipfastlabs\Parsel\Exceptions\InvalidOutputException;
 use Shipfastlabs\Parsel\Exceptions\ParseFailedException;
+use Shipfastlabs\Parsel\Exceptions\ParseTimedOutException;
 use Shipfastlabs\Parsel\Exceptions\SourceNotFoundException;
 use Shipfastlabs\Parsel\Options\LiteParseOptions;
 use Shipfastlabs\Parsel\ParselManager;
 use Shipfastlabs\Parsel\Support\FakeProcessRunner;
 use Shipfastlabs\Parsel\Support\ProcessResult;
+use Shipfastlabs\Parsel\Support\SymfonyProcessRunner;
 use Tests\Doubles\ConfigCapturingRunner;
 use Tests\Doubles\FakeJsonOutputRunner;
 
@@ -229,6 +231,38 @@ it('does not expose the document password on a process failure', function (): vo
             ->and(print_r(array_slice($exception->getTrace(), 0, 2), true))->not->toContain('hunter2');
     });
 });
+
+it('translates a timed out process into a parsel exception', function (): void {
+    $timedOut = new FakeProcessRunner(['parse' => new ProcessResult(143, '', '', ['lit', 'parse'], 5.0)]);
+
+    expect(fn (): string => fakeParse($timedOut)->text())
+        ->toThrow(ParseTimedOutException::class, 'liteparse timed out after 5 seconds.');
+});
+
+it('stops a slow binary at the configured timeout and removes temporary files', function (): void {
+    $binary = sys_get_temp_dir().DIRECTORY_SEPARATOR.'parsel_slow_'.uniqid().'.sh';
+    file_put_contents($binary, "#!/bin/sh\nsleep 5\n");
+    chmod($binary, 0755);
+
+    $before = glob(sys_get_temp_dir().DIRECTORY_SEPARATOR.'parsel_*.pdf') ?: [];
+
+    try {
+        new ParselManager(process: new SymfonyProcessRunner, timeout: 0.2, binaries: ['liteparse' => $binary])
+            ->bytes('%PDF-1.4', 'pdf')
+            ->withProviderOptions([])
+            ->text();
+
+        $this->fail('Expected the parse to time out.');
+    } catch (ParseTimedOutException $parseTimedOutException) {
+        expect($parseTimedOutException->timeout)->toBe(0.2)
+            ->and($parseTimedOutException->driver)->toBe('liteparse')
+            ->and($parseTimedOutException->command[0])->toBe($binary);
+    } finally {
+        unlink($binary);
+    }
+
+    expect(glob(sys_get_temp_dir().DIRECTORY_SEPARATOR.'parsel_*.pdf') ?: [])->toBe($before);
+})->skipOnWindows();
 
 it('validates sources before starting a process', function (): void {
     $unused = new FakeProcessRunner;

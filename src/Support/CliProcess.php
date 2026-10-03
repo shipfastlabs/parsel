@@ -8,6 +8,7 @@ use SensitiveParameter;
 use Shipfastlabs\Parsel\Contracts\Filesystem;
 use Shipfastlabs\Parsel\Contracts\ProcessRunner;
 use Shipfastlabs\Parsel\Exceptions\ParseFailedException;
+use Shipfastlabs\Parsel\Exceptions\ParseTimedOutException;
 use Shipfastlabs\Parsel\Source;
 
 final readonly class CliProcess
@@ -30,6 +31,10 @@ final readonly class CliProcess
             if ($temporary !== null) {
                 $this->files->delete($temporary);
             }
+        }
+
+        if ($result->timedOut()) {
+            throw ParseTimedOutException::fromResult($result, $driver);
         }
 
         if (! $result->successful()) {

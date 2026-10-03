@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Shipfastlabs\Parsel\Exceptions\BinaryNotFoundException;
 use Shipfastlabs\Parsel\Exceptions\InvalidOutputException;
 use Shipfastlabs\Parsel\Exceptions\ParseFailedException;
+use Shipfastlabs\Parsel\Exceptions\ParselException;
+use Shipfastlabs\Parsel\Exceptions\ParseTimedOutException;
 use Shipfastlabs\Parsel\Support\ProcessResult;
 
 it('builds a parse failure from a result with stderr', function (): void {
@@ -42,4 +44,25 @@ it('describes invalid output', function (): void {
 it('describes a missing binary', function (): void {
     expect(BinaryNotFoundException::onPath('lit', 'PARSEL_LIT_BINARY')->getMessage())
         ->toContain('lit')->toContain('PARSEL_LIT_BINARY');
+});
+
+it('builds a timeout from a timed out result', function (): void {
+    $exception = ParseTimedOutException::fromResult(new ProcessResult(143, '', '', ['lit', 'parse'], 2.5), 'liteparse');
+
+    expect($exception)->toBeInstanceOf(ParselException::class)
+        ->and($exception->timeout)->toBe(2.5)
+        ->and($exception->driver)->toBe('liteparse')
+        ->and($exception->command)->toBe(['lit', 'parse'])
+        ->and($exception->getMessage())->toBe('liteparse timed out after 2.5 seconds.');
+});
+
+it('formats whole second timeouts and defaults the driver name', function (): void {
+    $exception = ParseTimedOutException::after(60.0, ['anydoc']);
+
+    expect($exception->getMessage())->toBe('parser timed out after 60 seconds.')
+        ->and($exception->driver)->toBe('parser');
+});
+
+it('falls back to a zero timeout for results that did not record one', function (): void {
+    expect(ParseTimedOutException::fromResult(new ProcessResult(1, '', '', ['lit']))->timeout)->toBe(0.0);
 });
