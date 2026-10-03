@@ -8,9 +8,6 @@ use Generator;
 use JsonException;
 use JsonMachine\Items;
 use JsonMachine\JsonDecoder\ExtJsonDecoder;
-use Shipfastlabs\Parsel\BatchRequest;
-use Shipfastlabs\Parsel\Contracts\BatchDriver;
-use Shipfastlabs\Parsel\Contracts\ComplexityDriver;
 use Shipfastlabs\Parsel\Contracts\Driver;
 use Shipfastlabs\Parsel\Contracts\Filesystem;
 use Shipfastlabs\Parsel\Contracts\LazyPageDriver;
@@ -18,22 +15,19 @@ use Shipfastlabs\Parsel\Contracts\ScreenshotDriver;
 use Shipfastlabs\Parsel\Contracts\StructuredDocumentDriver;
 use Shipfastlabs\Parsel\Contracts\TextDriver;
 use Shipfastlabs\Parsel\Data\Document;
-use Shipfastlabs\Parsel\Data\DocumentComplexity;
 use Shipfastlabs\Parsel\Data\Page;
 use Shipfastlabs\Parsel\Enums\OutputFormat;
 use Shipfastlabs\Parsel\Exceptions\FilesystemException;
 use Shipfastlabs\Parsel\Exceptions\InvalidOutputException;
 use Shipfastlabs\Parsel\Exceptions\InvalidProviderOptionsException;
 use Shipfastlabs\Parsel\ParseRequest;
-use Shipfastlabs\Parsel\Support\BatchOutputs;
 use Shipfastlabs\Parsel\Support\BinaryResolver;
 use Shipfastlabs\Parsel\Support\CliArguments;
 use Shipfastlabs\Parsel\Support\CliProcess;
 use Shipfastlabs\Parsel\Support\NativeFilesystem;
-use Shipfastlabs\Parsel\Support\ProcessResult;
 use Shipfastlabs\Parsel\Support\StagingDirectory;
 
-final readonly class LiteParseDriver implements BatchDriver, ComplexityDriver, Driver, LazyPageDriver, ScreenshotDriver, StructuredDocumentDriver, TextDriver
+final readonly class LiteParseDriver implements Driver, LazyPageDriver, ScreenshotDriver, StructuredDocumentDriver, TextDriver
 {
     private const array OPTION_KEYS = [
         'pages', 'max_pages', 'ocr', 'ocr_language', 'ocr_server_url', 'tessdata_path', 'workers', 'dpi',
@@ -56,11 +50,6 @@ final readonly class LiteParseDriver implements BatchDriver, ComplexityDriver, D
         'extract_images' => '--extract-images',
         'extract_xfa_packets' => '--extract-xfa-packets',
         'complexity' => '--complexity',
-    ];
-
-    private const array BATCH_UNSUPPORTED_KEYS = [
-        'pages', 'tessdata_path', 'preserve_small_text', 'image_mode', 'image_directory', 'links',
-        'keep_headers_and_footers', 'continue_on_page_error', 'config', 'complexity',
     ];
 
     public function __construct(
@@ -96,10 +85,7 @@ final readonly class LiteParseDriver implements BatchDriver, ComplexityDriver, D
 
     public function document(ParseRequest $request): Document
     {
-        /** @var array<string, mixed> $decoded */
-        $decoded = $this->decodeJson($this->json($request));
-
-        return Document::fromLiteParseJson($decoded);
+        return Document::fromLiteParseJson($this->decodeJson($this->json($request)));
     }
 
     public function json(ParseRequest $request): string
@@ -149,92 +135,6 @@ final readonly class LiteParseDriver implements BatchDriver, ComplexityDriver, D
         } finally {
             $staging->delete($output);
         }
-    }
-
-    public function complexity(ParseRequest $request): DocumentComplexity
-    {
-        $options = $request->options;
-        $binary = $this->resolver->resolve($this->string($options, 'binary') ?? $this->configuredBinary);
-
-        $result = $this->process->run(
-            $request->source,
-            function (string $file) use ($binary, $options): array {
-                $command = CliArguments::command($binary, 'is-complex', $file, '--compact', '-q');
-                $command = $this->appendFlag($command, 'target-pages', $this->scalar($options, 'pages'));
-                $command = $this->appendFlag($command, 'max-pages', $this->scalar($options, 'max_pages'));
-                $command = $this->appendFlag($command, 'password', $this->scalar($options, 'password'));
-
-                return CliArguments::appendExtra($command, $options);
-            },
-            $request->timeout,
-            $this->name(),
-            accepts: $this->reportedPagesNeedingOcr(...),
-        );
-
-        $decoded = $this->decodeJson(trim($result->stdout));
-
-        if (! array_is_list($decoded)) {
-            throw InvalidOutputException::malformedJson('expected a JSON array', $this->name());
-        }
-
-        return DocumentComplexity::fromLiteParseJson($decoded);
-    }
-
-    private function reportedPagesNeedingOcr(ProcessResult $result): bool
-    {
-        return $result->exitCode === 1 && str_starts_with(ltrim($result->stdout), '[');
-    }
-
-    public function batch(BatchRequest $request): array
-    {
-        $options = $request->options;
-        $unsupported = array_values(array_intersect(array_keys($options), self::BATCH_UNSUPPORTED_KEYS));
-
-        if ($unsupported !== []) {
-            throw InvalidProviderOptionsException::unsupported($this->name(), 'batch parsing', $unsupported);
-        }
-
-        if (! is_dir($request->inputDirectory)) {
-            throw FilesystemException::inputDirectoryNotFound($request->inputDirectory);
-        }
-
-        if (file_exists($request->outputDirectory) && ! is_dir($request->outputDirectory)) {
-            throw FilesystemException::notADirectory($request->outputDirectory);
-        }
-
-        $binary = $this->resolver->resolve($this->string($options, 'binary') ?? $this->configuredBinary);
-        $command = CliArguments::command(
-            $binary, 'batch-parse', $request->inputDirectory, $request->outputDirectory,
-            '--format', $request->format->value, '-q',
-        );
-
-        if ($request->recursive) {
-            $command[] = '--recursive';
-        }
-
-        $command = $this->appendFlag($command, 'extension', $request->extension);
-        $command = $this->appendFlag($command, 'max-pages', $this->scalar($options, 'max_pages'));
-        $command = $this->appendFlag($command, 'password', $this->scalar($options, 'password'));
-
-        if (($options['ocr'] ?? false) !== true) {
-            $command[] = '--no-ocr';
-        } else {
-            $command = $this->appendFlag($command, 'ocr-language', $this->scalar($options, 'ocr_language'));
-            $command = $this->appendFlag($command, 'ocr-server-url', $this->scalar($options, 'ocr_server_url'));
-            $command = $this->appendOcrServerHeaders($command, $options['ocr_server_headers'] ?? []);
-            $command = $this->appendFlag($command, 'num-workers', $this->scalar($options, 'workers'));
-        }
-
-        $command = $this->appendFlag($command, 'dpi', $this->scalar($options, 'dpi'));
-        $command = $this->appendJsonFlags($command, $request->format, $options);
-
-        $this->process->execute(CliArguments::appendExtra($command, $options), $request->timeout, $this->name());
-
-        return BatchOutputs::written($request, match ($request->format) {
-            OutputFormat::Markdown => 'md',
-            OutputFormat::Text => 'txt',
-            OutputFormat::Json => 'json',
-        });
     }
 
     public function pages(ParseRequest $request): Generator
@@ -338,7 +238,7 @@ final readonly class LiteParseDriver implements BatchDriver, ComplexityDriver, D
         return trim($text);
     }
 
-    /** @return array<array-key, mixed> */
+    /** @return array<string, mixed> */
     private function decodeJson(string $json): array
     {
         if ($json === '') {
@@ -355,6 +255,7 @@ final readonly class LiteParseDriver implements BatchDriver, ComplexityDriver, D
             throw InvalidOutputException::malformedJson('expected a JSON object', $this->name());
         }
 
+        /** @var array<string, mixed> $decoded */
         return $decoded;
     }
 

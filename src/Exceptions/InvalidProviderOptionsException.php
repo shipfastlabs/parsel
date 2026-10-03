@@ -42,19 +42,4 @@ final class InvalidProviderOptionsException extends ParselException
     {
         return new self(sprintf('Options for provider [%s] cannot be used with driver [%s].', $actual, $expected));
     }
-
-    /**
-     * @param  list<string>  $keys
-     */
-    public static function unsupported(string $provider, string $operation, array $keys): self
-    {
-        return new self(sprintf(
-            'The %s provider option%s %s not supported for %s: %s.',
-            $provider,
-            count($keys) === 1 ? '' : 's',
-            count($keys) === 1 ? 'is' : 'are',
-            $operation,
-            implode(', ', $keys),
-        ));
-    }
 }

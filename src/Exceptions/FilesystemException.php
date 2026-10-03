@@ -15,14 +15,4 @@ final class FilesystemException extends ParselException
     {
         return new self(sprintf('Screenshot directory "%s" does not exist.', $path));
     }
-
-    public static function inputDirectoryNotFound(string $path): self
-    {
-        return new self(sprintf('Input directory "%s" does not exist.', $path));
-    }
-
-    public static function notADirectory(string $path): self
-    {
-        return new self(sprintf('"%s" exists but is not a directory.', $path));
-    }
 }
