@@ -53,3 +53,21 @@ it('surfaces a rejected --format as a usage error', function (): void {
     expect($parse)->toThrow(ParserUsageException::class, "invalid format 'bogus'")
         ->and($parse)->toThrow(ParseFailedException::class, 'anydoc exited with code 2');
 })->group('integration');
+
+it('streams real document bytes to anydoc through stdin', function (string $extension, string $expected): void {
+    $bytes = (string) file_get_contents(anydocSample($extension));
+
+    $markdown = Parsel::driver('anydoc')->bytes($bytes, $extension)->markdown();
+
+    expect($markdown)->toContain($expected);
+})->with([
+    'docx' => ['docx', 'This text has formatting directly applied'],
+    'xlsx' => ['xlsx', '## Template'],
+    'pdf' => ['pdf', 'UNITED STATES'],
+])->group('integration');
+
+it('streams real csv bytes to anydoc with an inferred format', function (): void {
+    $markdown = Parsel::driver('anydoc')->bytes("name,qty\nwidget,2\n", 'csv')->markdown();
+
+    expect($markdown)->toContain('| name | qty |', '| widget | 2 |');
+})->group('integration');

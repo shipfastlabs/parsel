@@ -31,7 +31,8 @@ it('records the commands and their count', function (): void {
     $fake->run(['lit', 'screenshot', 'b']);
 
     expect($fake->ranCount())->toBe(2)
-        ->and($fake->recordedCommands())->toBe([['lit', 'parse', 'a'], ['lit', 'screenshot', 'b']]);
+        ->and($fake->recordedCommands())->toBe([['lit', 'parse', 'a'], ['lit', 'screenshot', 'b']])
+        ->and($fake->recordedInputs())->toBe(['stdin', null]);
 });
 
 it('prefers the longest matching needle', function (): void {
