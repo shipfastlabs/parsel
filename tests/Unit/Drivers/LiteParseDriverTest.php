@@ -73,6 +73,61 @@ it('omits disabled and format-inapplicable options', function (): void {
         ->not->toContain('--ocr-language', '--image-mode', '--no-links', '--keep-headers-footers', '--preserve-small-text');
 });
 
+it('maps OCR server headers, page error recovery and config files to CLI flags', function (): void {
+    $fake = new FakeProcessRunner(['--format text' => 'ok']);
+    $options = LiteParseOptions::make()
+        ->withOcr(serverUrl: 'http://ocr', headers: ['Authorization' => 'Bearer token'])
+        ->withOcrServerHeader('X-Tenant', 'acme')
+        ->continueOnPageError()
+        ->withConfig('/etc/liteparse.json');
+
+    fakeParse($fake)->withProviderOptions($options)->text();
+
+    expect($fake->recordedCommands()[0])->toBe([
+        'lit', 'parse', fixture('sample.pdf'), '--format', 'text', '-q',
+        '--config', '/etc/liteparse.json', '--continue-on-page-error',
+        '--ocr-server-url', 'http://ocr',
+        '--ocr-server-header', 'Authorization: Bearer token',
+        '--ocr-server-header', 'X-Tenant: acme',
+    ]);
+});
+
+it('omits OCR server headers when OCR is disabled and page error recovery when turned off', function (): void {
+    $fake = new FakeProcessRunner(['--format text' => 'ok']);
+    $options = LiteParseOptions::make()
+        ->withOcrServerHeader('Authorization', 'Bearer token')
+        ->continueOnPageError(false);
+
+    fakeParse($fake)->withProviderOptions($options)->text();
+
+    expect($fake->recordedCommands()[0])->toBe(['lit', 'parse', fixture('sample.pdf'), '--format', 'text', '-q', '--no-ocr']);
+});
+
+it('accepts the new options as strict array keys and skips malformed headers', function (): void {
+    $fake = new FakeProcessRunner(['--format text' => 'ok']);
+
+    fakeParse($fake)->withProviderOptions([
+        'ocr' => true,
+        'ocr_server_headers' => ['X-Key' => 'abc', 'X-Bad' => 1, 42 => 'numeric'],
+        'continue_on_page_error' => true,
+        'config' => '/cfg.json',
+    ])->text();
+
+    expect($fake->recordedCommands()[0])->toBe([
+        'lit', 'parse', fixture('sample.pdf'), '--format', 'text', '-q',
+        '--config', '/cfg.json', '--continue-on-page-error',
+        '--ocr-server-header', 'X-Key: abc', '--ocr-server-header', '42: numeric',
+    ]);
+});
+
+it('ignores a non-array OCR server header option', function (): void {
+    $fake = new FakeProcessRunner(['--format text' => 'ok']);
+
+    fakeParse($fake)->withProviderOptions(['ocr' => true, 'ocr_server_headers' => 'X-Key: abc', 'config' => 42])->text();
+
+    expect($fake->recordedCommands()[0])->toBe(['lit', 'parse', fixture('sample.pdf'), '--format', 'text', '-q']);
+});
+
 it('ignores a malformed raw option bucket safely', function (): void {
     $fake = new FakeProcessRunner(['--format text' => 'ok']);
 

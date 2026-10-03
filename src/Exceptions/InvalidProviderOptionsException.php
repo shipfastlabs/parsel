@@ -19,6 +19,11 @@ final class InvalidProviderOptionsException extends ParselException
         ));
     }
 
+    public static function invalidOcrServerHeader(string $name): self
+    {
+        return new self(sprintf('Invalid OCR server header [%s]: the name must be non-empty without a colon, and the header may not contain line breaks.', $name));
+    }
+
     public static function forProvider(string $expected, string $actual): self
     {
         return new self(sprintf('Options for provider [%s] cannot be used with driver [%s].', $actual, $expected));

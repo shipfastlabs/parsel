@@ -84,3 +84,22 @@ it('streams pages of a real pdf lazily', function (): void {
         ->and($pages[0]->items)->not->toBeEmpty()
         ->and($pages[0]->items[0]->text)->toBeString();
 })->group('integration');
+
+it('loads a liteparse config file and tolerates page errors', function (): void {
+    if (! litAvailable()) {
+        $this->markTestSkipped('lit binary not installed');
+    }
+
+    $config = tempnam(sys_get_temp_dir(), 'parsel_lit_config');
+    file_put_contents($config, '{"maxPages": 1}');
+
+    try {
+        $document = Parsel::file(demoPdf())
+            ->withProviderOptions(LiteParseOptions::make()->withConfig($config)->continueOnPageError())
+            ->parse();
+    } finally {
+        unlink($config);
+    }
+
+    expect($document->pages)->toHaveCount(1);
+})->group('integration');
