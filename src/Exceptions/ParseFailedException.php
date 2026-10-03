@@ -6,12 +6,12 @@ namespace Shipfastlabs\Parsel\Exceptions;
 
 use Shipfastlabs\Parsel\Support\ProcessResult;
 
-final class ParseFailedException extends ParselException
+class ParseFailedException extends ParselException
 {
     /**
      * @param  list<string>  $command
      */
-    private function __construct(
+    final protected function __construct(
         string $message,
         public readonly int $exitCode,
         public readonly string $stderr,
@@ -20,15 +20,20 @@ final class ParseFailedException extends ParselException
         parent::__construct($message);
     }
 
-    public static function fromResult(ProcessResult $result, string $driver = 'parser'): self
+    public static function fromResult(ProcessResult $result, string $driver = 'parser'): static
     {
-        $detail = $result->stderr === '' ? '(no error output)' : $result->stderr;
-
-        return new self(
-            sprintf('%s exited with code %d: %s', $driver, $result->exitCode, $detail),
+        return new static(
+            static::describe($result, $driver),
             $result->exitCode,
             $result->stderr,
             $result->command,
         );
+    }
+
+    protected static function describe(ProcessResult $result, string $driver): string
+    {
+        $detail = $result->stderr === '' ? '(no error output)' : trim($result->stderr);
+
+        return sprintf('%s exited with code %d: %s', $driver, $result->exitCode, $detail);
     }
 }

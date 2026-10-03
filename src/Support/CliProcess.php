@@ -18,8 +18,9 @@ final readonly class CliProcess
 
     /**
      * @param  callable(string): list<string>  $command
+     * @param  array<int, class-string<ParseFailedException>>  $failures  Exception classes keyed by exit code.
      */
-    public function run(Source $source, callable $command, ?float $timeout, string $driver): ProcessResult
+    public function run(Source $source, callable $command, ?float $timeout, string $driver, array $failures = []): ProcessResult
     {
         [$file, $temporary] = $this->resolveFile($source);
 
@@ -32,7 +33,9 @@ final readonly class CliProcess
         }
 
         if (! $result->successful()) {
-            throw ParseFailedException::fromResult($result, $driver);
+            $exception = $failures[$result->exitCode] ?? ParseFailedException::class;
+
+            throw $exception::fromResult($result, $driver);
         }
 
         return $result;

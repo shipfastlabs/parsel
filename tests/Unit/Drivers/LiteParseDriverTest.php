@@ -150,6 +150,17 @@ it('preserves process failure details', function (): void {
     expect(fn (): string => fakeParse($failed)->text())->toThrow(ParseFailedException::class, 'boom');
 });
 
+it('does not apply anydoc exit code mapping to liteparse failures', function (int $exitCode): void {
+    $failed = new FakeProcessRunner(['parse' => new ProcessResult($exitCode, '', 'boom', ['lit', 'parse'])]);
+
+    try {
+        fakeParse($failed)->text();
+        $this->fail('Expected parsing to fail.');
+    } catch (ParseFailedException $parseFailedException) {
+        expect($parseFailedException::class)->toBe(ParseFailedException::class);
+    }
+})->with([2, 3]);
+
 it('validates sources before starting a process', function (): void {
     $unused = new FakeProcessRunner;
 
