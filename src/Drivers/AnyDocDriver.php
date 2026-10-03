@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Shipfastlabs\Parsel\Drivers;
 
 use Shipfastlabs\Parsel\Contracts\Driver;
+use Shipfastlabs\Parsel\Enums\AnyDocOcrMode;
 use Shipfastlabs\Parsel\Exceptions\InvalidProviderOptionsException;
 use Shipfastlabs\Parsel\ParseRequest;
 use Shipfastlabs\Parsel\Support\BinaryResolver;
@@ -13,7 +14,7 @@ use Shipfastlabs\Parsel\Support\CliProcess;
 
 final readonly class AnyDocDriver implements Driver
 {
-    private const array OPTION_KEYS = ['format', 'binary', 'extra'];
+    private const array OPTION_KEYS = ['format', 'ocr', 'api_key', 'api_url', 'binary', 'extra'];
 
     public function __construct(
         private CliProcess $process = new CliProcess,
@@ -33,6 +34,10 @@ final readonly class AnyDocDriver implements Driver
         if ($unknown !== []) {
             throw InvalidProviderOptionsException::unknown($this->name(), $unknown);
         }
+
+        if (array_key_exists('ocr', $options) && (! is_string($options['ocr']) || AnyDocOcrMode::tryFrom($options['ocr']) === null)) {
+            throw InvalidProviderOptionsException::invalidValue($this->name(), 'ocr', $options['ocr'], AnyDocOcrMode::values());
+        }
     }
 
     public function markdown(ParseRequest $request): string
@@ -45,11 +50,14 @@ final readonly class AnyDocDriver implements Driver
             $request->source,
             function (string $file) use ($binary, $options): array {
                 $command = CliArguments::command($binary, $file);
-                $format = $options['format'] ?? null;
 
-                if (is_string($format)) {
-                    $command[] = '--format';
-                    $command[] = $format;
+                foreach (['format' => '--format', 'ocr' => '--ocr', 'api_key' => '--api-key', 'api_url' => '--api-url'] as $key => $flag) {
+                    $value = $options[$key] ?? null;
+
+                    if (is_string($value)) {
+                        $command[] = $flag;
+                        $command[] = $value;
+                    }
                 }
 
                 return CliArguments::appendExtra($command, $options);
