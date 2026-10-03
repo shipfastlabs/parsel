@@ -2,47 +2,87 @@
   "pages": [
     {
       "page": 1,
-      "width": 612.0,
-      "height": 792.0,
-      "text": "UNITED STATES\nForm 10-K",
-      "textItems": [
+      "width": 612,
+      "height": 792,
+      "text": "                                       UNITED STATES\n                            SECURITIES AND EXCHANGE COMMISSION\n                                  Washington, D.C. 20549\n\n                                         FORM 10-K",
+      "text_items": [
         {
           "text": "UNITED STATES",
-          "x": 254.38,
-          "y": 58.106018,
-          "width": 103.0,
-          "height": 13.0,
-          "fontName": "AAAGYH+HelveticaLTStd-Bold",
-          "fontSize": 13.0,
-          "confidence": 1.0
+          "x": 254.3800048828125,
+          "y": 58.10601806640625,
+          "width": 103.28500366210938,
+          "height": 12.68798828125,
+          "font_name": "AAAGYH+HelveticaLTStd-Bold",
+          "font_size": 13,
+          "confidence": 1
         },
         {
-          "text": "Form 10-K",
-          "x": 100.0,
-          "y": 80.0,
-          "width": 60.0,
-          "height": 12.0,
-          "fontName": "AAAGYH+HelveticaLTStd",
-          "fontSize": 12.0,
-          "confidence": 1.0
+          "text": "SECURITIES AND EXCHANGE COMMISSION",
+          "x": 168.11000061035156,
+          "y": 73.70599365234375,
+          "width": 275.91204833984375,
+          "height": 12.68798828125,
+          "font_name": "AAAGYH+HelveticaLTStd-Bold",
+          "font_size": 13,
+          "confidence": 1
+        },
+        {
+          "text": "Washington, D.C. 20549",
+          "x": 243.6999969482422,
+          "y": 89.3619384765625,
+          "width": 124.69596862792969,
+          "height": 10.73602294921875,
+          "font_name": "AAAGYH+HelveticaLTStd-Bold",
+          "font_size": 11,
+          "confidence": 1
+        },
+        {
+          "text": "FORM 10-K",
+          "x": 260.2099914550781,
+          "y": 124.13397216796875,
+          "width": 91.58901977539062,
+          "height": 16.59197998046875,
+          "font_name": "AAAGYH+HelveticaLTStd-Bold",
+          "font_size": 17,
+          "confidence": 1
         }
       ]
     },
     {
       "page": 2,
-      "width": 612.0,
-      "height": 792.0,
-      "text": "Page two body text",
-      "textItems": [
+      "width": 612,
+      "height": 792,
+      "text": "    Indicate by check mark whether the Registrant (1) has filed all reports required to be filed by Section 13 or 15(d) of the Securities Exchange Act\n    of 1934 during the preceding 12 months (or for such shorter period that the Registrant was required to file such reports), and (2) has been\n    subject to such filing requirements for the past 90 days.",
+      "text_items": [
         {
-          "text": "Page two body text",
-          "x": 72.0,
-          "y": 100.0,
-          "width": 120.0,
-          "height": 11.0,
-          "fontName": "TimesNewRoman",
-          "fontSize": 11.0,
-          "confidence": 0.98
+          "text": "Indicate by check mark whether the Registrant (1) has filed all reports required to be filed by Section 13 or 15(d) of the Securities Exchange Act",
+          "x": 49.5,
+          "y": 52.10601806640625,
+          "width": 512.9840087890625,
+          "height": 7.78399658203125,
+          "font_name": "AAAXNJ+HelveticaLTStd-Roman",
+          "font_size": 8,
+          "confidence": 1
+        },
+        {
+          "text": "of 1934 during the preceding 12 months (or for such shorter period that the Registrant was required to file such reports), and (2) has been",
+          "x": 49.5,
+          "y": 61.73797607421875,
+          "width": 512.83203125,
+          "height": 7.75201416015625,
+          "font_name": "AAAXNJ+HelveticaLTStd-Roman",
+          "font_size": 8,
+          "confidence": 1
+        },
+        {
+          "text": "subject to such filing requirements for the past 90 days.",
+          "x": 49.5,
+          "y": 71.37799072265625,
+          "width": 195.4639892578125,
+          "height": 7.71197509765625,
+          "font_name": "AAAXNJ+HelveticaLTStd-Roman",
+          "font_size": 8,
+          "confidence": 1
         }
       ]
     }

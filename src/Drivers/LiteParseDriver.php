@@ -62,10 +62,7 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
 
     public function text(ParseRequest $request): string
     {
-        $text = $this->parseResult($request, OutputFormat::Text);
-        $stripped = preg_replace('/^--- Page \d+ ---\R?/m', '', $text) ?? $text;
-
-        return trim($stripped);
+        return $this->normalizeText($this->parseResult($request, OutputFormat::Text));
     }
 
     public function document(ParseRequest $request): Document
@@ -171,6 +168,17 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
         if ($config !== null) {
             $this->files->delete($config);
         }
+    }
+
+    private function normalizeText(string $text): string
+    {
+        if (preg_match('/\A\s*--- Page \d+ ---/', $text) === 1) {
+            $text = preg_replace('/^--- Page \d+ ---\R?/m', '', $text) ?? $text;
+        }
+
+        $text = preg_replace('/\R*\f\R*/', "\n\n", $text) ?? $text;
+
+        return trim($text);
     }
 
     /** @return array<string, mixed> */
