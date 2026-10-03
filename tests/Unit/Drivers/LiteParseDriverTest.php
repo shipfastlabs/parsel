@@ -116,7 +116,7 @@ it('propagates a failed lazy parsing process', function (): void {
     iterator_to_array(new ParselManager(process: new FakeJsonOutputRunner('', 3), binaries: ['liteparse' => 'lit'])->file(fixture('sample.pdf'))->lazyPages());
 })->throws(ParseFailedException::class, 'liteparse exited');
 
-it('builds screenshot commands', function (): void {
+it('builds screenshot commands that render into a private staging directory', function (): void {
     $directory = screenshotDirectory();
     $fake = new FakeProcessRunner(['screenshot' => '']);
 
@@ -124,74 +124,57 @@ it('builds screenshot commands', function (): void {
         ->withProviderOptions(LiteParseOptions::make()->page(1)->withDpi(150)->withPassword('pw')->option('foo'))
         ->screenshots($directory);
 
+    $command = $fake->recordedCommands()[0];
+    $output = $command[(int) array_search('-o', $command, true) + 1];
+
     expect($files)->toBe([])
-        ->and($fake->recordedCommands()[0])->toContain('screenshot', '-o', $directory, '--target-pages', '1', '--dpi', '150', '--password', 'pw', '--foo');
+        ->and($command)->toContain('screenshot', '--target-pages', '1', '--dpi', '150', '--password', 'pw', '--foo')
+        ->and($output)->not->toBe($directory)
+        ->and(file_exists($output))->toBeFalse();
 
     removeScreenshotDirectory($directory);
 });
 
-it('returns only the screenshots produced by the run in page order', function (): void {
-    $directory = screenshotDirectory([
-        '.gitkeep' => null,
-        'notes.txt' => null,
-        'page.png' => null,
-        'page_1.jpg' => null,
-        'page_7.png' => time() - 100,
-    ]);
+it('moves only the screenshots produced by the run into the destination in page order', function (): void {
+    $directory = screenshotDirectory(['.gitkeep', 'page_2.png', 'page_7.png']);
+    $runner = new FakeScreenshotRunner(['page_10.png', 'page_2.png', 'page_1.png', 'notes.txt', 'page_01.png']);
 
-    $files = screenshotParse(new FakeScreenshotRunner([10, 2, 1]))->screenshots($directory);
+    $files = screenshotParse($runner)->screenshots($directory.DIRECTORY_SEPARATOR);
 
     expect($files)->toBe([
         $directory.DIRECTORY_SEPARATOR.'page_1.png',
         $directory.DIRECTORY_SEPARATOR.'page_2.png',
         $directory.DIRECTORY_SEPARATOR.'page_10.png',
-    ]);
+    ])
+        ->and(file_get_contents($directory.DIRECTORY_SEPARATOR.'page_2.png'))->toBe('png')
+        ->and(file_get_contents($directory.DIRECTORY_SEPARATOR.'page_7.png'))->toBe('stale')
+        ->and(file_exists($directory.DIRECTORY_SEPARATOR.'.gitkeep'))->toBeTrue()
+        ->and(file_exists($directory.DIRECTORY_SEPARATOR.'notes.txt'))->toBeFalse()
+        ->and(file_exists((string) $runner->outputDirectory))->toBeFalse();
 
     removeScreenshotDirectory($directory);
 });
 
-it('returns screenshots that overwrite files from an earlier run', function (): void {
-    $directory = screenshotDirectory(['page_1.png' => time() - 100, 'page_2.png' => time() - 100]);
+it('removes the staging directory when the screenshot process fails', function (): void {
+    $directory = screenshotDirectory();
+    $runner = new FakeScreenshotRunner(['page_1.png'], 3);
 
-    $files = screenshotParse(new FakeScreenshotRunner([2]))->screenshots($directory);
-
-    expect($files)->toBe([$directory.DIRECTORY_SEPARATOR.'page_2.png']);
-
-    removeScreenshotDirectory($directory);
-});
-
-it('returns overwritten screenshots whose modification time changed even when the clock lags', function (): void {
-    $directory = screenshotDirectory(['page_1.png' => time() - 100, 'page_2.png' => time() - 100]);
-
-    $files = screenshotParse(new FakeScreenshotRunner([1], time() - 50))->screenshots($directory);
-
-    expect($files)->toBe([$directory.DIRECTORY_SEPARATOR.'page_1.png']);
+    expect(fn (): array => screenshotParse($runner)->screenshots($directory))->toThrow(ParseFailedException::class)
+        ->and(file_exists((string) $runner->outputDirectory))->toBeFalse()
+        ->and(scandir($directory))->toBe(['.', '..']);
 
     removeScreenshotDirectory($directory);
 });
 
-it('returns screenshots overwritten within the same second as an earlier run', function (): void {
-    $directory = screenshotDirectory(['page_1.png' => null]);
+it('removes the staging directory when a screenshot cannot be moved', function (): void {
+    $directory = screenshotDirectory();
+    mkdir($directory.DIRECTORY_SEPARATOR.'page_1.png');
+    $runner = new FakeScreenshotRunner(['page_1.png']);
 
-    $files = screenshotParse(new FakeScreenshotRunner([1]))->screenshots($directory);
+    expect(fn (): array => screenshotParse($runner)->screenshots($directory))->toThrow(FilesystemException::class)
+        ->and(file_exists((string) $runner->outputDirectory))->toBeFalse();
 
-    expect($files)->toBe([$directory.DIRECTORY_SEPARATOR.'page_1.png']);
-
-    removeScreenshotDirectory($directory);
-});
-
-it('limits recently written screenshots to the requested pages', function (): void {
-    $directory = screenshotDirectory(['page_1.png' => null, 'page_3.png' => null, 'page_4.png' => null, 'page_01.png' => null]);
-
-    $files = screenshotParse(new FakeScreenshotRunner([1, 4]))
-        ->withProviderOptions(LiteParseOptions::make()->pages('1', ' 4-5'))
-        ->screenshots($directory);
-
-    expect($files)->toBe([
-        $directory.DIRECTORY_SEPARATOR.'page_1.png',
-        $directory.DIRECTORY_SEPARATOR.'page_4.png',
-    ]);
-
+    rmdir($directory.DIRECTORY_SEPARATOR.'page_1.png');
     removeScreenshotDirectory($directory);
 });
 
@@ -222,18 +205,14 @@ it('validates sources before starting a process', function (): void {
         ->and($unused->ranCount())->toBe(0);
 });
 
-/** @param array<string, int|null> $files */
+/** @param list<string> $files */
 function screenshotDirectory(array $files = []): string
 {
     $directory = sys_get_temp_dir().DIRECTORY_SEPARATOR.'parsel_shots_'.uniqid();
     mkdir($directory);
 
-    foreach ($files as $name => $modifiedAt) {
+    foreach ($files as $name) {
         file_put_contents($directory.DIRECTORY_SEPARATOR.$name, 'stale');
-
-        if ($modifiedAt !== null) {
-            touch($directory.DIRECTORY_SEPARATOR.$name, $modifiedAt);
-        }
     }
 
     return $directory;

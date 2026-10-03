@@ -94,7 +94,6 @@ it('returns only the screenshots a real run produced', function (): void {
     mkdir($directory);
     file_put_contents($directory.DIRECTORY_SEPARATOR.'.gitkeep', '');
     file_put_contents($directory.DIRECTORY_SEPARATOR.'page_99.png', 'stale');
-    touch($directory.DIRECTORY_SEPARATOR.'page_99.png', time() - 100);
 
     try {
         $first = Parsel::file(demoPdf())
@@ -108,7 +107,9 @@ it('returns only the screenshots a real run produced', function (): void {
         expect($first)->toBe([
             $directory.DIRECTORY_SEPARATOR.'page_2.png',
             $directory.DIRECTORY_SEPARATOR.'page_10.png',
-        ])->and($second)->toBe([$directory.DIRECTORY_SEPARATOR.'page_2.png']);
+        ])->and($second)->toBe([$directory.DIRECTORY_SEPARATOR.'page_2.png'])
+            ->and(file_get_contents($directory.DIRECTORY_SEPARATOR.'page_99.png'))->toBe('stale')
+            ->and(file_exists($directory.DIRECTORY_SEPARATOR.'.gitkeep'))->toBeTrue();
     } finally {
         array_map(unlink(...), glob($directory.DIRECTORY_SEPARATOR.'{,.}[!.]*', GLOB_BRACE) ?: []);
         rmdir($directory);

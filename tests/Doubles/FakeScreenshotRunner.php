@@ -7,30 +7,27 @@ namespace Tests\Doubles;
 use Shipfastlabs\Parsel\Contracts\ProcessRunner;
 use Shipfastlabs\Parsel\Support\ProcessResult;
 
-final readonly class FakeScreenshotRunner implements ProcessRunner
+final class FakeScreenshotRunner implements ProcessRunner
 {
+    public ?string $outputDirectory = null;
+
     /**
-     * @param  list<int>  $pages
+     * @param  list<string>  $files
      */
     public function __construct(
-        private array $pages,
-        private ?int $modifiedAt = null,
+        private readonly array $files,
+        private readonly int $exitCode = 0,
     ) {}
 
     public function run(array $command, ?string $input = null, ?float $timeout = 60.0): ProcessResult
     {
-        $index = array_search('-o', $command, true);
-        $directory = $index === false ? sys_get_temp_dir() : $command[$index + 1];
+        $index = (int) array_search('-o', $command, true);
+        $this->outputDirectory = $command[$index + 1];
 
-        foreach ($this->pages as $page) {
-            $path = $directory.DIRECTORY_SEPARATOR.'page_'.$page.'.png';
-            file_put_contents($path, 'png');
-
-            if ($this->modifiedAt !== null) {
-                touch($path, $this->modifiedAt);
-            }
+        foreach ($this->files as $file) {
+            file_put_contents($this->outputDirectory.DIRECTORY_SEPARATOR.$file, 'png');
         }
 
-        return new ProcessResult(0, '', '', $command);
+        return new ProcessResult($this->exitCode, '', $this->exitCode === 0 ? '' : 'boom', $command);
     }
 }

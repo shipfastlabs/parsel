@@ -200,7 +200,7 @@ $files = Parsel::file('document.pdf')
     ->screenshots('/path/to/screenshots');
 ```
 
-LiteParse writes one `page_<N>.png` file per rendered page. `screenshots()` returns the paths of the files written by that call, sorted by page number; other files already in the directory are left alone and not returned.
+LiteParse writes one `page_<N>.png` file per rendered page. `screenshots()` renders into a private temporary directory, moves the produced files into the destination (replacing same-named files, as LiteParse itself does) and returns exactly those paths, sorted by page number. Other files already in the directory are left alone and not returned.
 
 ## Binary resolution
 
