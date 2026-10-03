@@ -44,3 +44,33 @@ it('safely ignores malformed raw array entries', function (): void {
 it('rejects unknown array options', function (): void {
     Parsel::driver('anydoc')->file('report.docx')->withProviderOptions(['typo' => true]);
 })->throws(InvalidProviderOptionsException::class, 'typo');
+
+it('passes hosted ocr flags to anydoc', function (): void {
+    $fake = Parsel::fake(['anydoc' => 'ok']);
+
+    Parsel::driver('anydoc')->file(fixture('sample.pdf'))
+        ->withProviderOptions(AnyDocOptions::make()->withHostedOcr('fc-key', 'https://firecrawl.test'))
+        ->markdown();
+    Parsel::driver('anydoc')->file(fixture('sample.pdf'))
+        ->withProviderOptions(['ocr' => 'reject'])
+        ->markdown();
+
+    expect($fake->recordedCommands()[0])->toContain('--ocr', 'hosted', '--api-key', 'fc-key', '--api-url', 'https://firecrawl.test')
+        ->and($fake->recordedCommands()[1])->toContain('--ocr', 'reject')->not->toContain('--api-key', '--api-url');
+});
+
+it('omits ocr flags by default', function (): void {
+    $fake = Parsel::fake(['anydoc' => 'ok']);
+
+    Parsel::driver('anydoc')->file(fixture('sample.pdf'))->markdown();
+
+    expect($fake->recordedCommands()[0])->not->toContain('--ocr', '--api-key', '--api-url');
+});
+
+it('rejects invalid array ocr modes', function (mixed $mode, string $message): void {
+    expect(fn (): mixed => Parsel::driver('anydoc')->file('scan.pdf')->withProviderOptions(['ocr' => $mode]))
+        ->toThrow(InvalidProviderOptionsException::class, $message);
+})->with([
+    'unknown mode' => ['local', "[ocr]: 'local'. Expected one of: reject, hosted."],
+    'non-string mode' => [['hosted'], '[ocr]: array. Expected one of: reject, hosted.'],
+]);
