@@ -31,6 +31,19 @@ final readonly class CliProcess
             }
         }
 
+        return $this->ensureSuccessful($result, $driver);
+    }
+
+    /**
+     * @param  list<string>  $command
+     */
+    public function runWithInput(array $command, string $input, ?float $timeout, string $driver): ProcessResult
+    {
+        return $this->ensureSuccessful($this->process->run($command, $input, $timeout), $driver);
+    }
+
+    private function ensureSuccessful(ProcessResult $result, string $driver): ProcessResult
+    {
         if (! $result->successful()) {
             throw ParseFailedException::fromResult($result, $driver);
         }

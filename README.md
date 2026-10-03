@@ -97,9 +97,10 @@ $markdown = Parsel::bytes($uploadedBytes, 'pdf')->markdown();
 
 $markdown = Parsel::driver('anydoc')
     ->bytes($csvBytes, 'csv')
-    ->withProviderOptions(['format' => 'csv'])
     ->markdown();
 ```
+
+AnyDoc streams byte sources to `anydoc -` over stdin instead of writing a temporary file when the extension is one anydoc recognizes (`pdf`, `doc`, `docx`, `docm`, `odt`, `rtf`, `epub`, `ppt`, `pps`, `pot`, `pptx`, `pptm`, `ppsx`, `ppsm`, `odp`, `xls`, `xlsx`, `xlsm`, `xlsb`, `ods`, `csv`) or when you set an explicit format. anydoc detects the format from the content, as it does for files. Signature-less CSV gets `--format csv` automatically. Bytes with any other extension and no explicit format still go through a temporary file. LiteParse always uses a temporary file for byte sources.
 
 Timeout is portable across drivers:
 

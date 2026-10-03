@@ -7,6 +7,7 @@ namespace Shipfastlabs\Parsel\Drivers;
 use Shipfastlabs\Parsel\Contracts\Driver;
 use Shipfastlabs\Parsel\Exceptions\InvalidProviderOptionsException;
 use Shipfastlabs\Parsel\ParseRequest;
+use Shipfastlabs\Parsel\Source;
 use Shipfastlabs\Parsel\Support\BinaryResolver;
 use Shipfastlabs\Parsel\Support\CliArguments;
 use Shipfastlabs\Parsel\Support\CliProcess;
@@ -14,6 +15,13 @@ use Shipfastlabs\Parsel\Support\CliProcess;
 final readonly class AnyDocDriver implements Driver
 {
     private const array OPTION_KEYS = ['format', 'binary', 'extra'];
+
+    private const array STDIN_EXTENSIONS = [
+        'csv', 'doc', 'docm', 'docx', 'epub', 'ods', 'odp', 'odt', 'pdf', 'pot', 'pps', 'ppsm',
+        'ppsx', 'ppt', 'pptm', 'pptx', 'rtf', 'xls', 'xlsb', 'xlsm', 'xlsx',
+    ];
+
+    private const array SIGNATURELESS_EXTENSIONS = ['csv'];
 
     public function __construct(
         private CliProcess $process = new CliProcess,
@@ -40,24 +48,50 @@ final readonly class AnyDocDriver implements Driver
         $options = $request->options;
         $explicit = $options['binary'] ?? null;
         $binary = $this->resolver->resolve(is_string($explicit) ? $explicit : $this->configuredBinary);
+        $format = is_string($options['format'] ?? null) ? $options['format'] : null;
+        $source = $request->source;
 
-        $result = $this->process->run(
-            $request->source,
-            function (string $file) use ($binary, $options): array {
-                $command = CliArguments::command($binary, $file);
-                $format = $options['format'] ?? null;
-
-                if (is_string($format)) {
-                    $command[] = '--format';
-                    $command[] = $format;
-                }
-
-                return CliArguments::appendExtra($command, $options);
-            },
-            $request->timeout,
-            $this->name(),
-        );
+        $result = $this->streamsThroughStdin($source, $format)
+            ? $this->process->runWithInput(
+                $this->command($binary, '-', $format ?? $this->stdinFormat($source), $options),
+                $source->contents(),
+                $request->timeout,
+                $this->name(),
+            )
+            : $this->process->run(
+                $source,
+                fn (string $file): array => $this->command($binary, $file, $format, $options),
+                $request->timeout,
+                $this->name(),
+            );
 
         return trim($result->stdout);
+    }
+
+    private function streamsThroughStdin(Source $source, ?string $format): bool
+    {
+        return $source->isBytes()
+            && ($format !== null || in_array($source->extension, self::STDIN_EXTENSIONS, true));
+    }
+
+    private function stdinFormat(Source $source): ?string
+    {
+        return in_array($source->extension, self::SIGNATURELESS_EXTENSIONS, true) ? $source->extension : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     * @return list<string>
+     */
+    private function command(string $binary, string $input, ?string $format, array $options): array
+    {
+        $command = CliArguments::command($binary, $input);
+
+        if ($format !== null) {
+            $command[] = '--format';
+            $command[] = $format;
+        }
+
+        return CliArguments::appendExtra($command, $options);
     }
 }

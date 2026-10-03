@@ -28,3 +28,29 @@ it('converts a real document to markdown with anydoc', function (): void {
 
     expect($markdown)->not->toBeEmpty();
 })->group('integration');
+
+it('streams real document bytes to anydoc through stdin', function (string $extension, string $expected): void {
+    if (! anydocAvailable()) {
+        $this->markTestSkipped('anydoc binary not installed');
+    }
+
+    $bytes = (string) file_get_contents(__DIR__.'/../../examples/docs/sample.'.$extension);
+
+    $markdown = Parsel::driver('anydoc')->bytes($bytes, $extension)->markdown();
+
+    expect($markdown)->toContain($expected);
+})->with([
+    'docx' => ['docx', 'This text has formatting directly applied'],
+    'xlsx' => ['xlsx', '## Template'],
+    'pdf' => ['pdf', 'UNITED STATES'],
+])->group('integration');
+
+it('streams real csv bytes to anydoc with an inferred format', function (): void {
+    if (! anydocAvailable()) {
+        $this->markTestSkipped('anydoc binary not installed');
+    }
+
+    $markdown = Parsel::driver('anydoc')->bytes("name,qty\nwidget,2\n", 'csv')->markdown();
+
+    expect($markdown)->toContain('| name | qty |', '| widget | 2 |');
+})->group('integration');
