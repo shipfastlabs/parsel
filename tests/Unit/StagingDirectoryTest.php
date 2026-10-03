@@ -13,8 +13,7 @@ it('creates, fills and recursively deletes a private directory', function (): vo
     file_put_contents($directory.DIRECTORY_SEPARATOR.'nested'.DIRECTORY_SEPARATOR.'a.txt', 'A');
     file_put_contents($directory.DIRECTORY_SEPARATOR.'b.txt', 'B');
 
-    expect(is_dir($directory))->toBeTrue()
-        ->and(fileperms($directory) & 0777)->toBe(0700);
+    expect(is_dir($directory))->toBeTrue();
 
     $staging->delete($directory);
 
@@ -22,6 +21,17 @@ it('creates, fills and recursively deletes a private directory', function (): vo
 
     $staging->delete($directory);
 });
+
+it('creates the directory readable only by its owner', function (): void {
+    $staging = new StagingDirectory;
+    $directory = $staging->create();
+
+    try {
+        expect(fileperms($directory) & 0777)->toBe(0700);
+    } finally {
+        $staging->delete($directory);
+    }
+})->skipOnWindows();
 
 it('moves files and overwrites existing ones', function (): void {
     $staging = new StagingDirectory;
