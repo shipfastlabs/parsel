@@ -43,6 +43,27 @@ final readonly class Document
         return new self($pages, $text, $metadata);
     }
 
+    /**
+     * @return list<array<array-key, mixed>>
+     */
+    public function images(): array
+    {
+        $images = $this->metadata['images'] ?? null;
+
+        if (! is_array($images)) {
+            return [];
+        }
+
+        return array_values(array_filter($images, is_array(...)));
+    }
+
+    public function formType(): ?int
+    {
+        $formType = Cast::pick($this->metadata, ['form_type', 'formType']);
+
+        return is_numeric($formType) ? (int) $formType : null;
+    }
+
     public function pageCount(): int
     {
         return count($this->pages);

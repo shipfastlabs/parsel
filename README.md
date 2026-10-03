@@ -319,6 +319,31 @@ foreach ($document->pages as $page) {
 }
 ```
 
+LiteParse emits richer per-page data when you pass the matching CLI flags (for now through `option()`). A field stays `null` when its flag was not passed:
+
+| Flag | Field |
+| --- | --- |
+| `extract-text-metadata` | `$item->rotation` (font metrics and colors such as `fontWeight`, `fontHeight`, `fontAscent`, `fontDescent`, `textWidth`, `fillColor`, `strokeColor` are filled whenever LiteParse reports them) |
+| `extract-content-bounds` | `$page->contentBounds` (`BoundingBox` with `x`, `y`, `width`, `height`) |
+| `complexity` | `$page->complexity` |
+| `extract-annotations` | `$page->annotations` |
+| `extract-form-fields` | `$page->formFields`, `$document->formType()` |
+| `extract-structure-tree` | `$page->structureTree` |
+| `extract-vector-graphics` | `$page->vectorGraphics` |
+| `extract-images` | `$document->images()` |
+
+```php
+$document = Parsel::file('document.pdf')
+    ->withProviderOptions(LiteParseOptions::make()->option('extract-content-bounds')->option('complexity'))
+    ->parse();
+
+$page = $document->page(1);
+$page->contentBounds?->width;
+$page->complexity['needs_ocr'] ?? null;
+```
+
+Complexity, annotations, form fields, the structure tree, vector graphics and images are exposed as the raw arrays decoded from LiteParse's JSON. The top-level `images` and `form_type` keys also remain in `$document->metadata`.
+
 Stream large documents without decoding the complete page array:
 
 ```php
