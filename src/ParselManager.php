@@ -43,6 +43,11 @@ final class ParselManager
         return $this->driver()->bytes($contents, $extension);
     }
 
+    public function directory(string $path): PendingBatch
+    {
+        return $this->driver()->directory($path);
+    }
+
     public function driver(?string $name = null): Parser
     {
         return new Parser($this->resolve($name ?? $this->default), $this->files, $this->timeout);

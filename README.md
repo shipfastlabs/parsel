@@ -58,6 +58,7 @@ vendor/bin/parsel-install --driver=liteparse --with-system-dependencies
 | Lazy pages | Yes | No |
 | Screenshots | Yes | No |
 | Complexity / OCR detection | Yes | No |
+| Batch directories | Yes | No |
 | OCR | Yes | No |
 
 Parsel is tested against LiteParse 2.15.x and AnyDoc 0.2.x.
@@ -414,6 +415,23 @@ $page->layout?->reasons; // ['table-likely']
 
 Layout signals (`hasComplexLayout()`) are independent of the OCR verdict: they indicate that the text-only path may mangle reading order or structure.
 
+## Batch parsing directories
+
+LiteParse can parse a whole directory in one `lit batch-parse` process. `saveTo()` writes one file per document, mirroring the input layout (`in/sub/report.pdf` becomes `out/sub/report.md`), creates the output directory when needed, and returns the written files:
+
+```php
+$files = Parsel::directory('/path/to/inbox')
+    ->withProviderOptions(LiteParseOptions::make()->maxPages(20)->withDpi(200))
+    ->recursive()
+    ->only('pdf')
+    ->withTimeout(600)
+    ->saveTo('/path/to/parsed', 'markdown');
+```
+
+The format is `markdown` (`.md`, the default), `text` (`.txt`) or `json` (`.json`). Without `only()`, every file type LiteParse supports is processed; `recursive()` descends into subdirectories.
+
+Batch runs accept the max-pages, password, OCR language/server/headers/workers, DPI, binary and raw `option()` settings, plus the JSON enrichment options (except `withComplexity()`) when saving JSON. Page selection, tessdata path, small-text preservation, image, link, header/footer, page-error, config file and complexity options have no `batch-parse` flag and throw `InvalidProviderOptionsException`. A missing input directory throws `FilesystemException`. If any document fails, LiteParse still writes the others but exits non-zero, so Parsel throws `ParseFailedException` with the per-file errors in its message.
+
 ## Binary resolution
 
 Each local driver resolves its executable in this order:
@@ -442,6 +460,8 @@ $markdown = Parsel::driver('company-api')->file('report.pdf')->markdown();
 ```
 
 Drivers are resolved lazily and cached by the manager. Implement `TextDriver`, `StructuredDocumentDriver`, `LazyPageDriver`, `ScreenshotDriver`, or `ComplexityDriver` to add those operations. A remote driver may use any HTTP client and does not need to depend on Parsel's CLI process infrastructure.
+
+Drivers are resolved lazily and cached by the manager. Implement `TextDriver`, `StructuredDocumentDriver`, `LazyPageDriver`, `ScreenshotDriver`, `ComplexityDriver`, or `BatchDriver` to add those operations. A remote driver may use any HTTP client and does not need to depend on Parsel's CLI process infrastructure.
 
 ## Testing
 
