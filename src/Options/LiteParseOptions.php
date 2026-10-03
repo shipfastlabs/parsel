@@ -136,6 +136,90 @@ final class LiteParseOptions implements ProviderOptions
         return $this;
     }
 
+    public function extractBlocks(bool $enabled = true): self
+    {
+        $this->options['extract_blocks'] = $enabled;
+
+        return $this;
+    }
+
+    public function extractAnnotations(bool $enabled = true): self
+    {
+        $this->options['extract_annotations'] = $enabled;
+
+        return $this;
+    }
+
+    public function extractFormFields(bool $enabled = true): self
+    {
+        $this->options['extract_form_fields'] = $enabled;
+
+        return $this;
+    }
+
+    public function extractStructureTree(bool $enabled = true): self
+    {
+        $this->options['extract_structure_tree'] = $enabled;
+
+        return $this;
+    }
+
+    public function extractContentBounds(bool $enabled = true): self
+    {
+        $this->options['extract_content_bounds'] = $enabled;
+
+        return $this;
+    }
+
+    public function extractVectorGraphics(bool $enabled = true): self
+    {
+        $this->options['extract_vector_graphics'] = $enabled;
+
+        return $this;
+    }
+
+    public function extractTextMetadata(bool $enabled = true): self
+    {
+        $this->options['extract_text_metadata'] = $enabled;
+
+        return $this;
+    }
+
+    public function extractImages(bool $enabled = true): self
+    {
+        $this->options['extract_images'] = $enabled;
+
+        return $this;
+    }
+
+    public function extractXfaPackets(bool $enabled = true): self
+    {
+        $this->options['extract_xfa_packets'] = $enabled;
+
+        return $this;
+    }
+
+    public function withComplexity(bool $enabled = true): self
+    {
+        $this->options['complexity'] = $enabled;
+
+        return $this;
+    }
+
+    public function extractAll(): self
+    {
+        return $this->extractBlocks()
+            ->extractAnnotations()
+            ->extractFormFields()
+            ->extractStructureTree()
+            ->extractContentBounds()
+            ->extractVectorGraphics()
+            ->extractTextMetadata()
+            ->extractImages()
+            ->extractXfaPackets()
+            ->withComplexity();
+    }
+
     public function withBinary(string $path): self
     {
         $this->options['binary'] = $path;

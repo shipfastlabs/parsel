@@ -38,6 +38,25 @@ it('builds disabled liteparse options without an extra bucket', function (): voi
     ])->not->toHaveKey('extra');
 });
 
+it('builds liteparse JSON enrichment options', function (): void {
+    expect(LiteParseOptions::make()->extractAll()->toArray())->toBe([
+        'extract_blocks' => true,
+        'extract_annotations' => true,
+        'extract_form_fields' => true,
+        'extract_structure_tree' => true,
+        'extract_content_bounds' => true,
+        'extract_vector_graphics' => true,
+        'extract_text_metadata' => true,
+        'extract_images' => true,
+        'extract_xfa_packets' => true,
+        'complexity' => true,
+    ])->and(LiteParseOptions::make()->extractAll()->extractImages(false)->withComplexity(false)->toArray())->toMatchArray([
+        'extract_blocks' => true,
+        'extract_images' => false,
+        'complexity' => false,
+    ]);
+});
+
 it('builds anydoc options fluently', function (): void {
     $options = AnyDocOptions::make()->format('.CSV')->withBinary('/anydoc')->option('future', 2);
 

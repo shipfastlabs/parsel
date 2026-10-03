@@ -133,7 +133,7 @@ $document = Parsel::file('invoice.pdf')
     ->parse();
 ```
 
-LiteParse options include page selection, maximum pages, OCR settings, DPI, small-text preservation, passwords, Markdown images and links, headers and footers, and a binary override.
+LiteParse options include page selection, maximum pages, OCR settings, DPI, small-text preservation, passwords, Markdown images and links, headers and footers, JSON enrichments, and a binary override.
 
 ```php
 use Shipfastlabs\Parsel\Enums\ImageMode;
@@ -191,6 +191,31 @@ foreach (Parsel::file('large.pdf')->lazyPages() as $page) {
     echo $page->text;
 }
 ```
+
+LiteParse can enrich its JSON output with extra data. These options only apply to structured output (`parse()`, `toArray()`, `lazyPages()`, and `save('*.json')`); they are not sent for `text()` or `markdown()`:
+
+```php
+$document = Parsel::file('form.pdf')
+    ->withProviderOptions(
+        LiteParseOptions::make()
+            ->extractBlocks()          // classified layout blocks with bounding boxes
+            ->extractAnnotations()     // all PDF annotations
+            ->extractFormFields()      // AcroForm widget fields and values
+            ->extractStructureTree()   // tagged-PDF logical structure tree
+            ->extractContentBounds()   // per-page content bounds
+            ->extractVectorGraphics()  // vector shapes and merged lines
+            ->extractTextMetadata()    // rich text metadata on text items
+            ->extractImages()          // embedded image bytes and metadata
+            ->extractXfaPackets()      // raw XFA packets
+            ->withComplexity()         // per-page complexity signals
+    )
+    ->parse();
+
+// Or enable everything at once:
+LiteParseOptions::make()->extractAll();
+```
+
+The equivalent array keys are `extract_blocks`, `extract_annotations`, `extract_form_fields`, `extract_structure_tree`, `extract_content_bounds`, `extract_vector_graphics`, `extract_text_metadata`, `extract_images`, `extract_xfa_packets`, and `complexity`. Document-level results such as `images`, `form_type`, and `xfa_packets` appear in `$document->metadata`; the complete enriched payload is available with `save('output.json')`.
 
 Screenshots require an existing destination directory:
 

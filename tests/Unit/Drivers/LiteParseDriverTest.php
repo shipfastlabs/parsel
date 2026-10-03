@@ -73,6 +73,43 @@ it('omits disabled and format-inapplicable options', function (): void {
         ->not->toContain('--ocr-language', '--image-mode', '--no-links', '--keep-headers-footers', '--preserve-small-text');
 });
 
+it('sends JSON enrichment flags for structured output', function (): void {
+    $fake = new FakeProcessRunner(['--format json' => fixtureContents('liteparse-output.json')]);
+
+    fakeParse($fake)->withProviderOptions(LiteParseOptions::make()->extractAll())->parse();
+
+    expect($fake->recordedCommands()[0])->toContain(
+        '--extract-blocks', '--extract-annotations', '--extract-form-fields', '--extract-structure-tree',
+        '--extract-content-bounds', '--extract-vector-graphics', '--extract-text-metadata', '--extract-images',
+        '--extract-xfa-packets', '--complexity',
+    );
+});
+
+it('omits disabled JSON enrichment flags', function (): void {
+    $fake = new FakeProcessRunner(['--format json' => fixtureContents('liteparse-output.json')]);
+
+    fakeParse($fake)->withProviderOptions([
+        'extract_blocks' => true,
+        'extract_images' => false,
+        'complexity' => 'yes',
+    ])->parse();
+
+    expect($fake->recordedCommands()[0])->toContain('--extract-blocks')
+        ->not->toContain('--extract-images', '--complexity');
+});
+
+it('does not send JSON enrichment flags for text or markdown output', function (): void {
+    $fake = new FakeProcessRunner(['--format text' => 'ok', '--format markdown' => 'ok']);
+    $options = LiteParseOptions::make()->extractAll();
+
+    fakeParse($fake)->withProviderOptions($options)->text();
+    fakeParse($fake)->withProviderOptions($options)->markdown();
+
+    foreach ($fake->recordedCommands() as $command) {
+        expect(array_filter($command, fn (string $part): bool => str_starts_with($part, '--extract-') || $part === '--complexity'))->toBe([]);
+    }
+});
+
 it('ignores a malformed raw option bucket safely', function (): void {
     $fake = new FakeProcessRunner(['--format text' => 'ok']);
 
