@@ -9,6 +9,7 @@ use Shipfastlabs\Parsel\Contracts\Driver;
 use Shipfastlabs\Parsel\Contracts\ProcessRunner;
 use Shipfastlabs\Parsel\ParselManager;
 use Shipfastlabs\Parsel\Parser;
+use Shipfastlabs\Parsel\PendingBatch;
 use Shipfastlabs\Parsel\PendingParse;
 use Shipfastlabs\Parsel\Support\FakeProcessRunner;
 use Shipfastlabs\Parsel\Support\ProcessResult;
@@ -35,6 +36,11 @@ final class Parsel
     public static function bytes(string $contents, string $extension): PendingParse
     {
         return self::manager()->bytes($contents, $extension);
+    }
+
+    public static function directory(string $path): PendingBatch
+    {
+        return self::manager()->directory($path);
     }
 
     public static function driver(string $name): Parser

@@ -8,6 +8,8 @@ use Generator;
 use JsonException;
 use JsonMachine\Items;
 use JsonMachine\JsonDecoder\ExtJsonDecoder;
+use Shipfastlabs\Parsel\BatchRequest;
+use Shipfastlabs\Parsel\Contracts\BatchDriver;
 use Shipfastlabs\Parsel\Contracts\Driver;
 use Shipfastlabs\Parsel\Contracts\Filesystem;
 use Shipfastlabs\Parsel\Contracts\LazyPageDriver;
@@ -21,17 +23,23 @@ use Shipfastlabs\Parsel\Exceptions\FilesystemException;
 use Shipfastlabs\Parsel\Exceptions\InvalidOutputException;
 use Shipfastlabs\Parsel\Exceptions\InvalidProviderOptionsException;
 use Shipfastlabs\Parsel\ParseRequest;
+use Shipfastlabs\Parsel\Support\BatchOutputs;
 use Shipfastlabs\Parsel\Support\BinaryResolver;
 use Shipfastlabs\Parsel\Support\CliArguments;
 use Shipfastlabs\Parsel\Support\CliProcess;
 use Shipfastlabs\Parsel\Support\NativeFilesystem;
 
-final readonly class LiteParseDriver implements Driver, LazyPageDriver, ScreenshotDriver, StructuredDocumentDriver, TextDriver
+final readonly class LiteParseDriver implements BatchDriver, Driver, LazyPageDriver, ScreenshotDriver, StructuredDocumentDriver, TextDriver
 {
     private const array OPTION_KEYS = [
         'pages', 'max_pages', 'ocr', 'ocr_language', 'ocr_server_url', 'tessdata_path', 'workers', 'dpi',
         'preserve_small_text', 'password', 'image_mode', 'image_directory', 'links',
         'keep_headers_and_footers', 'binary', 'extra',
+    ];
+
+    private const array BATCH_UNSUPPORTED_KEYS = [
+        'pages', 'tessdata_path', 'preserve_small_text', 'image_mode', 'image_directory', 'links',
+        'keep_headers_and_footers',
     ];
 
     public function __construct(
@@ -102,6 +110,56 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
         );
 
         return $this->files->files($directory);
+    }
+
+    public function batch(BatchRequest $request): array
+    {
+        $options = $request->options;
+        $unsupported = array_values(array_intersect(array_keys($options), self::BATCH_UNSUPPORTED_KEYS));
+
+        if ($unsupported !== []) {
+            throw InvalidProviderOptionsException::unsupported($this->name(), 'batch parsing', $unsupported);
+        }
+
+        if (! is_dir($request->inputDirectory)) {
+            throw FilesystemException::inputDirectoryNotFound($request->inputDirectory);
+        }
+
+        if (file_exists($request->outputDirectory) && ! is_dir($request->outputDirectory)) {
+            throw FilesystemException::notADirectory($request->outputDirectory);
+        }
+
+        $binary = $this->resolver->resolve($this->string($options, 'binary') ?? $this->configuredBinary);
+        $command = CliArguments::command(
+            $binary, 'batch-parse', $request->inputDirectory, $request->outputDirectory,
+            '--format', $request->format->value, '-q',
+        );
+
+        if ($request->recursive) {
+            $command[] = '--recursive';
+        }
+
+        $command = $this->appendFlag($command, 'extension', $request->extension);
+        $command = $this->appendFlag($command, 'max-pages', $this->scalar($options, 'max_pages'));
+        $command = $this->appendFlag($command, 'password', $this->scalar($options, 'password'));
+
+        if (($options['ocr'] ?? false) !== true) {
+            $command[] = '--no-ocr';
+        } else {
+            $command = $this->appendFlag($command, 'ocr-language', $this->scalar($options, 'ocr_language'));
+            $command = $this->appendFlag($command, 'ocr-server-url', $this->scalar($options, 'ocr_server_url'));
+            $command = $this->appendFlag($command, 'num-workers', $this->scalar($options, 'workers'));
+        }
+
+        $command = $this->appendFlag($command, 'dpi', $this->scalar($options, 'dpi'));
+
+        $this->process->execute(CliArguments::appendExtra($command, $options), $request->timeout, $this->name());
+
+        return BatchOutputs::written($request, match ($request->format) {
+            OutputFormat::Markdown => 'md',
+            OutputFormat::Text => 'txt',
+            OutputFormat::Json => 'json',
+        });
     }
 
     public function pages(ParseRequest $request): Generator
