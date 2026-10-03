@@ -11,6 +11,7 @@ final readonly class FakeFilesystem implements Filesystem
     public function __construct(
         private bool $exists = true,
         private bool $readable = true,
+        private string $temporaryDirectory = '/tmp',
     ) {}
 
     public function exists(string $path): bool
@@ -25,7 +26,7 @@ final readonly class FakeFilesystem implements Filesystem
 
     public function temporaryPath(string $extension): string
     {
-        return '/tmp/parsel-fake.'.$extension;
+        return $this->temporaryDirectory.'/parsel-fake.'.$extension;
     }
 
     public function put(string $path, string $contents): void {}

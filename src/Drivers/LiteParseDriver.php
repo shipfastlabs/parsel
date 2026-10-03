@@ -25,6 +25,7 @@ use Shipfastlabs\Parsel\Support\BinaryResolver;
 use Shipfastlabs\Parsel\Support\CliArguments;
 use Shipfastlabs\Parsel\Support\CliProcess;
 use Shipfastlabs\Parsel\Support\NativeFilesystem;
+use Shipfastlabs\Parsel\Support\StagingDirectory;
 
 final readonly class LiteParseDriver implements Driver, LazyPageDriver, ScreenshotDriver, StructuredDocumentDriver, TextDriver
 {
@@ -83,22 +84,40 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
 
         $options = $request->options;
         $binary = $this->resolver->resolve($this->string($options, 'binary') ?? $this->configuredBinary);
+        $staging = new StagingDirectory($this->files);
+        $output = $staging->create();
 
-        $this->process->run(
-            $request->source,
-            function (string $file) use ($binary, $directory, $options): array {
-                $command = CliArguments::command($binary, 'screenshot', $file, '-o', $directory, '-q');
-                $command = $this->appendFlag($command, 'target-pages', $this->scalar($options, 'pages'));
-                $command = $this->appendFlag($command, 'dpi', $this->scalar($options, 'dpi'));
-                $command = $this->appendFlag($command, 'password', $this->scalar($options, 'password'));
+        try {
+            $this->process->run(
+                $request->source,
+                function (string $file) use ($binary, $output, $options): array {
+                    $command = CliArguments::command($binary, 'screenshot', $file, '-o', $output, '-q');
+                    $command = $this->appendFlag($command, 'target-pages', $this->scalar($options, 'pages'));
+                    $command = $this->appendFlag($command, 'dpi', $this->scalar($options, 'dpi'));
+                    $command = $this->appendFlag($command, 'password', $this->scalar($options, 'password'));
 
-                return CliArguments::appendExtra($command, $options);
-            },
-            $request->timeout,
-            $this->name(),
-        );
+                    return CliArguments::appendExtra($command, $options);
+                },
+                $request->timeout,
+                $this->name(),
+            );
 
-        return $this->files->files($directory);
+            $screenshots = [];
+
+            foreach ($this->files->files($output) as $path) {
+                if (preg_match('/^page_([1-9]\d*)\.png$/', basename($path), $matches) === 1) {
+                    $destination = rtrim($directory, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.basename($path);
+                    $staging->move($path, $destination);
+                    $screenshots[(int) $matches[1]] = $destination;
+                }
+            }
+
+            ksort($screenshots);
+
+            return array_values($screenshots);
+        } finally {
+            $staging->delete($output);
+        }
     }
 
     public function pages(ParseRequest $request): Generator
