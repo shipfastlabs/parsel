@@ -7,6 +7,8 @@ namespace Shipfastlabs\Parsel\Drivers;
 use Shipfastlabs\Parsel\Contracts\Driver;
 use Shipfastlabs\Parsel\Enums\AnyDocOcrMode;
 use Shipfastlabs\Parsel\Exceptions\InvalidProviderOptionsException;
+use Shipfastlabs\Parsel\Exceptions\OcrRequiredException;
+use Shipfastlabs\Parsel\Exceptions\ParserUsageException;
 use Shipfastlabs\Parsel\ParseRequest;
 use Shipfastlabs\Parsel\Support\BinaryResolver;
 use Shipfastlabs\Parsel\Support\CliArguments;
@@ -15,6 +17,11 @@ use Shipfastlabs\Parsel\Support\CliProcess;
 final readonly class AnyDocDriver implements Driver
 {
     private const array OPTION_KEYS = ['format', 'ocr', 'api_key', 'api_url', 'binary', 'extra'];
+
+    private const array FAILURES = [
+        2 => ParserUsageException::class,
+        3 => OcrRequiredException::class,
+    ];
 
     public function __construct(
         private CliProcess $process = new CliProcess,
@@ -64,6 +71,7 @@ final readonly class AnyDocDriver implements Driver
             },
             $request->timeout,
             $this->name(),
+            self::FAILURES,
         );
 
         return trim($result->stdout);

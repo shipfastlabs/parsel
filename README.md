@@ -244,6 +244,32 @@ $options = AnyDocOptions::make()->option('new-upstream-flag');
 
 When the CLI exits with a non-zero code, Parsel throws `ParseFailedException` with the `exitCode`, `stderr`, and the `command` that was run. Values of secret flags (`--password`, `--api-key`, `--ocr-server-header`, including the `--flag=value` form) are replaced with `********` in `command`, so the exception is safe to log or report.
 
+## Handling failures
+
+Every provider process that exits with a non-zero code throws `ParseFailedException`, which exposes `exitCode`, `stderr`, and `command`. The AnyDoc driver maps its documented exit codes to more specific subclasses, so existing `catch (ParseFailedException)` blocks keep working:
+
+| AnyDoc exit code | Exception |
+| --- | --- |
+| 1, document could not be read or converted | `ParseFailedException` |
+| 2, usage error such as an unknown option or invalid `--format` | `ParserUsageException` |
+| 3, PDF pages need OCR | `OcrRequiredException` |
+
+```php
+use Shipfastlabs\Parsel\Exceptions\OcrRequiredException;
+use Shipfastlabs\Parsel\Options\LiteParseOptions;
+
+try {
+    $markdown = Parsel::driver('anydoc')->file('scan.pdf')->markdown();
+} catch (OcrRequiredException) {
+    $markdown = Parsel::driver('liteparse')
+        ->file('scan.pdf')
+        ->withProviderOptions(LiteParseOptions::make()->withOcr())
+        ->markdown();
+}
+```
+
+Alternatively, `AnyDocOptions::make()->withHostedOcr()` makes AnyDoc send the document to Firecrawl Parse for hosted OCR. LiteParse failures always throw `ParseFailedException`.
+
 ## Structured LiteParse output
 
 ```php

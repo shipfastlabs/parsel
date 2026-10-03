@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Shipfastlabs\Parsel;
 use Shipfastlabs\Parsel\Exceptions\ParseFailedException;
+use Shipfastlabs\Parsel\Exceptions\ParserUsageException;
 use Shipfastlabs\Parsel\Options\AnyDocOptions;
 
 beforeEach(function (): void {
@@ -43,11 +44,12 @@ it('names the input format with --format', function (string $extension, string $
     'pdf with a normalized extension' => ['pdf', '.PDF', 'UNITED STATES'],
 ])->group('integration');
 
-it('surfaces a rejected --format as a parse failure', function (): void {
+it('surfaces a rejected --format as a usage error', function (): void {
     $parse = fn (): string => Parsel::driver('anydoc')
         ->file(anydocSample('docx'))
         ->withProviderOptions(AnyDocOptions::make()->format('bogus'))
         ->markdown();
 
-    expect($parse)->toThrow(ParseFailedException::class, "invalid format 'bogus'");
+    expect($parse)->toThrow(ParserUsageException::class, "invalid format 'bogus'")
+        ->and($parse)->toThrow(ParseFailedException::class, 'anydoc exited with code 2');
 })->group('integration');
