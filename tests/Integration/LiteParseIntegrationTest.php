@@ -389,3 +389,27 @@ it('reports per-page complexity of a real pdf', function (): void {
         ->and($complexity->page(2)->needsOcr)->toBeFalse()
         ->and($complexity->page(1)->layout?->reasons)->toBe(['table-likely']);
 })->group('integration');
+
+it('batch parses a real directory tree into mirrored markdown files', function (): void {
+    $root = sys_get_temp_dir().DIRECTORY_SEPARATOR.'parsel_batch_it_'.uniqid();
+    $input = $root.DIRECTORY_SEPARATOR.'in';
+    $output = $root.DIRECTORY_SEPARATOR.'out';
+    mkdir($input.DIRECTORY_SEPARATOR.'nested', recursive: true);
+    copy(demoPdf(), $input.DIRECTORY_SEPARATOR.'first.pdf');
+    copy(demoPdf(), $input.DIRECTORY_SEPARATOR.'nested'.DIRECTORY_SEPARATOR.'second.pdf');
+
+    try {
+        $files = Parsel::directory($input)
+            ->withProviderOptions(LiteParseOptions::make()->maxPages(1)->withoutOcr())
+            ->recursive()
+            ->only('pdf')
+            ->saveTo($output, 'markdown');
+
+        expect($files)->toBe([
+            $output.DIRECTORY_SEPARATOR.'first.md',
+            $output.DIRECTORY_SEPARATOR.'nested'.DIRECTORY_SEPARATOR.'second.md',
+        ])->and((string) file_get_contents($files[1]))->toContain('UNITED STATES');
+    } finally {
+        exec('rm -rf '.escapeshellarg($root));
+    }
+})->group('integration');

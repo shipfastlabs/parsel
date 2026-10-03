@@ -40,6 +40,14 @@ final readonly class CliProcess
 
     /**
      * @param  list<string>  $command
+     */
+    public function execute(#[SensitiveParameter] array $command, ?float $timeout, string $driver): ProcessResult
+    {
+        return $this->ensureSuccessful($this->process->run($command, null, $timeout), $driver, []);
+    }
+
+    /**
+     * @param  list<string>  $command
      * @param  array<int, class-string<ParseFailedException>>  $failures  Exception classes keyed by exit code.
      */
     public function runWithInput(#[SensitiveParameter] array $command, string $input, ?float $timeout, string $driver, array $failures = []): ProcessResult
