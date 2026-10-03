@@ -209,6 +209,32 @@ it('renders page screenshots at the requested dpi', function (): void {
     }
 })->group('integration');
 
+it('returns only the screenshots a real run produced', function (): void {
+    $directory = integrationDirectory();
+    file_put_contents($directory.DIRECTORY_SEPARATOR.'.gitkeep', '');
+    file_put_contents($directory.DIRECTORY_SEPARATOR.'page_99.png', 'stale');
+
+    try {
+        $first = Parsel::file(demoPdf())
+            ->withProviderOptions(LiteParseOptions::make()->pages(2, 10)->withDpi(20))
+            ->screenshots($directory);
+
+        $second = Parsel::file(demoPdf())
+            ->withProviderOptions(LiteParseOptions::make()->page(2)->withDpi(20))
+            ->screenshots($directory);
+
+        expect($first)->toBe([
+            $directory.DIRECTORY_SEPARATOR.'page_2.png',
+            $directory.DIRECTORY_SEPARATOR.'page_10.png',
+        ])->and($second)->toBe([$directory.DIRECTORY_SEPARATOR.'page_2.png'])
+            ->and(file_get_contents($directory.DIRECTORY_SEPARATOR.'page_99.png'))->toBe('stale')
+            ->and(file_exists($directory.DIRECTORY_SEPARATOR.'.gitkeep'))->toBeTrue();
+    } finally {
+        array_map(unlink(...), glob($directory.DIRECTORY_SEPARATOR.'{,.}[!.]*', GLOB_BRACE) ?: []);
+        rmdir($directory);
+    }
+})->group('integration');
+
 it('sends the OCR language and worker flags to an OCR server', function (): void {
     $log = (string) tempnam(sys_get_temp_dir(), 'parsel-ocr');
     [$server, $url] = startFakeOcrServer($log);

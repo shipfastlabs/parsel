@@ -13,11 +13,13 @@ use Shipfastlabs\Parsel\Exceptions\ParseTimedOutException;
 use Shipfastlabs\Parsel\Exceptions\SourceNotFoundException;
 use Shipfastlabs\Parsel\Options\LiteParseOptions;
 use Shipfastlabs\Parsel\ParselManager;
+use Shipfastlabs\Parsel\PendingParse;
 use Shipfastlabs\Parsel\Support\FakeProcessRunner;
 use Shipfastlabs\Parsel\Support\ProcessResult;
 use Shipfastlabs\Parsel\Support\SymfonyProcessRunner;
 use Tests\Doubles\ConfigCapturingRunner;
 use Tests\Doubles\FakeJsonOutputRunner;
+use Tests\Doubles\FakeScreenshotRunner;
 
 it('returns text markdown structured documents and arrays', function (): void {
     Parsel::fake([
@@ -184,21 +186,66 @@ it('propagates a failed lazy parsing process', function (): void {
     iterator_to_array(new ParselManager(process: new FakeJsonOutputRunner('', 3), binaries: ['liteparse' => 'lit'])->file(fixture('sample.pdf'))->lazyPages());
 })->throws(ParseFailedException::class, 'liteparse exited');
 
-it('builds screenshot commands and returns destination files', function (): void {
-    $directory = sys_get_temp_dir().DIRECTORY_SEPARATOR.'parsel_shots_'.uniqid();
-    mkdir($directory);
-    file_put_contents($directory.DIRECTORY_SEPARATOR.'page.png', 'png');
+it('builds screenshot commands that render into a private staging directory', function (): void {
+    $directory = screenshotDirectory();
     $fake = new FakeProcessRunner(['screenshot' => '']);
 
     $files = fakeParse($fake)
         ->withProviderOptions(LiteParseOptions::make()->page(1)->withDpi(150)->withPassword('pw')->option('foo'))
         ->screenshots($directory);
 
-    expect($files)->toBe([$directory.DIRECTORY_SEPARATOR.'page.png'])
-        ->and($fake->recordedCommands()[0])->toContain('screenshot', '--target-pages', '1', '--dpi', '150', '--password', 'pw', '--foo');
+    $command = $fake->recordedCommands()[0];
+    $output = $command[(int) array_search('-o', $command, true) + 1];
 
-    unlink($directory.DIRECTORY_SEPARATOR.'page.png');
-    rmdir($directory);
+    expect($files)->toBe([])
+        ->and($command)->toContain('screenshot', '--target-pages', '1', '--dpi', '150', '--password', 'pw', '--foo')
+        ->and($output)->not->toBe($directory)
+        ->and(file_exists($output))->toBeFalse();
+
+    removeScreenshotDirectory($directory);
+});
+
+it('moves only the screenshots produced by the run into the destination in page order', function (): void {
+    $directory = screenshotDirectory(['.gitkeep', 'page_2.png', 'page_7.png']);
+    $runner = new FakeScreenshotRunner(['page_10.png', 'page_2.png', 'page_1.png', 'notes.txt', 'page_01.png']);
+
+    $files = screenshotParse($runner)->screenshots($directory.DIRECTORY_SEPARATOR);
+
+    expect($files)->toBe([
+        $directory.DIRECTORY_SEPARATOR.'page_1.png',
+        $directory.DIRECTORY_SEPARATOR.'page_2.png',
+        $directory.DIRECTORY_SEPARATOR.'page_10.png',
+    ])
+        ->and(file_get_contents($directory.DIRECTORY_SEPARATOR.'page_2.png'))->toBe('png')
+        ->and(file_get_contents($directory.DIRECTORY_SEPARATOR.'page_7.png'))->toBe('stale')
+        ->and(file_exists($directory.DIRECTORY_SEPARATOR.'.gitkeep'))->toBeTrue()
+        ->and(file_exists($directory.DIRECTORY_SEPARATOR.'notes.txt'))->toBeFalse()
+        ->and(file_exists((string) $runner->outputDirectory))->toBeFalse();
+
+    removeScreenshotDirectory($directory);
+});
+
+it('removes the staging directory when the screenshot process fails', function (): void {
+    $directory = screenshotDirectory();
+    $runner = new FakeScreenshotRunner(['page_1.png'], 3);
+
+    expect(fn (): array => screenshotParse($runner)->screenshots($directory))->toThrow(ParseFailedException::class)
+        ->and(file_exists((string) $runner->outputDirectory))->toBeFalse()
+        ->and(scandir($directory))->toBe(['.', '..']);
+
+    removeScreenshotDirectory($directory);
+});
+
+it('removes the staging directory when a screenshot cannot be moved', function (): void {
+    $directory = screenshotDirectory();
+    mkdir($directory.DIRECTORY_SEPARATOR.'page_1.png');
+    $runner = new FakeScreenshotRunner(['page_1.png']);
+
+    expect(fn (): array => screenshotParse($runner)->screenshots($directory))->toThrow(FilesystemException::class)
+        ->and(file_exists((string) $runner->outputDirectory))->toBeFalse();
+
+    rmdir($directory.DIRECTORY_SEPARATOR.'page_1.png');
+    removeScreenshotDirectory($directory);
 });
 
 it('requires the screenshot destination to exist', function (): void {
@@ -281,3 +328,32 @@ it('validates sources before starting a process', function (): void {
         ->toThrow(SourceNotFoundException::class)
         ->and($unused->ranCount())->toBe(0);
 });
+
+/** @param list<string> $files */
+function screenshotDirectory(array $files = []): string
+{
+    $directory = sys_get_temp_dir().DIRECTORY_SEPARATOR.'parsel_shots_'.uniqid();
+    mkdir($directory);
+
+    foreach ($files as $name) {
+        file_put_contents($directory.DIRECTORY_SEPARATOR.$name, 'stale');
+    }
+
+    return $directory;
+}
+
+function removeScreenshotDirectory(string $directory): void
+{
+    foreach (scandir($directory) ?: [] as $name) {
+        if (! in_array($name, ['.', '..'], true)) {
+            unlink($directory.DIRECTORY_SEPARATOR.$name);
+        }
+    }
+
+    rmdir($directory);
+}
+
+function screenshotParse(FakeScreenshotRunner $runner): PendingParse
+{
+    return new ParselManager(process: $runner, binaries: ['liteparse' => 'lit'])->file(fixture('sample.pdf'));
+}
