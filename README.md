@@ -59,6 +59,23 @@ vendor/bin/parsel-install --driver=liteparse --with-system-dependencies
 | Screenshots | Yes | No |
 | OCR | Yes | No |
 
+Parsel is tested against LiteParse 2.15.x and AnyDoc 0.2.x.
+
+### Supported formats
+
+| Input | LiteParse | AnyDoc |
+| --- | --- | --- |
+| PDF | Yes, natively | Yes (text layer only, see below) |
+| Word, PowerPoint, Excel (`doc`, `docx`, `ppt`, `pptx`, `xls`, `xlsx`, ...) | Yes, via LibreOffice conversion | Yes, natively |
+| OpenDocument (`odt`, `ods`, `odp`) | Yes, via LibreOffice conversion | Yes, natively |
+| RTF, CSV | Yes, via LibreOffice conversion | Yes, natively |
+| EPUB | No | Yes |
+| Images (`png`, `jpg`, `tiff`, `webp`, ...) | Yes, via OCR | No |
+
+AnyDoc accepts `doc`, `docx`, `odt`, `pdf`, `ppt`, `pptx`, `rtf`, `epub`, `xlsx`, `ods`, `odp`, and `csv`, plus extension aliases such as `xls`, `docm`, and `ppsx`. It rejects images (`anydoc sample.png` exits with "unsupported input") and does no local OCR: a scanned or image-only PDF fails with exit code 3, surfaced as a `ParseFailedException`.
+
+LiteParse needs LibreOffice for Office, OpenDocument, RTF, and CSV input. Install it with `vendor/bin/parsel-install --with-system-dependencies` (which also installs ImageMagick) or through your system package manager.
+
 Calling an unavailable operation throws `UnsupportedCapabilityException` before the provider is executed. Parsel does not derive fake structured data or plain text from AnyDoc Markdown.
 
 LiteParse remains the default driver, so existing basic calls continue to work:
@@ -132,6 +149,24 @@ $document = Parsel::file('invoice.pdf')
     ->withProviderOptions($options)
     ->parse();
 ```
+
+### OCR is off unless you enable it
+
+The `lit` CLI runs OCR by default, but Parsel always passes `--no-ocr` unless you opt in with `ocr()`, `withOcr()`, or the `'ocr' => true` array option. Scanned PDFs and images therefore return empty text until OCR is enabled:
+
+```php
+$text = Parsel::file('scanned.pdf')->text(); // empty: no text layer and OCR is disabled
+
+$text = Parsel::file('scanned.pdf')
+    ->withProviderOptions(LiteParseOptions::make()->withOcr())
+    ->text();
+
+$text = Parsel::file('receipt.png')
+    ->withProviderOptions(['ocr' => true, 'ocr_language' => 'eng'])
+    ->text();
+```
+
+LiteParse's built-in Tesseract OCR downloads language data from GitHub on first use, so the first OCR run needs network access. Use `withOcr(serverUrl: ...)` to send pages to an HTTP OCR server instead.
 
 LiteParse options include page selection, maximum pages, OCR settings, DPI, small-text preservation, passwords, Markdown images and links, headers and footers, and a binary override.
 
