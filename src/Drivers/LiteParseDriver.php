@@ -86,6 +86,8 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
 
         $options = $request->options;
         $binary = $this->resolver->resolve($this->string($options, 'binary') ?? $this->configuredBinary);
+        $before = $this->screenshotFiles($directory);
+        $startedAt = time();
 
         $this->process->run(
             $request->source,
@@ -101,7 +103,7 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
             $this->name(),
         );
 
-        return $this->files->files($directory);
+        return $this->producedScreenshots($before, $this->screenshotFiles($directory), $startedAt, $this->targetPages($options));
     }
 
     public function pages(ParseRequest $request): Generator
@@ -140,6 +142,71 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
             $request->timeout,
             $this->name(),
         )->stdout;
+    }
+
+    /**
+     * @param  array<string, array{page: int, modified: int|null}>  $before
+     * @param  array<string, array{page: int, modified: int|null}>  $after
+     * @param  array<int, true>|null  $targetPages
+     * @return list<string>
+     */
+    private function producedScreenshots(array $before, array $after, int $startedAt, ?array $targetPages): array
+    {
+        $produced = [];
+
+        foreach ($after as $path => ['page' => $page, 'modified' => $modified]) {
+            $previous = $before[$path] ?? null;
+
+            if ($previous === null
+                || $previous['modified'] !== $modified
+                || ($modified !== null && $modified >= $startedAt && ($targetPages === null || isset($targetPages[$page])))) {
+                $produced[$page] = $path;
+            }
+        }
+
+        ksort($produced);
+
+        return array_values($produced);
+    }
+
+    /**
+     * @return array<string, array{page: int, modified: int|null}>
+     */
+    private function screenshotFiles(string $directory): array
+    {
+        $screenshots = [];
+
+        foreach ($this->files->files($directory) as $path) {
+            if (preg_match('/^page_([1-9]\d*)\.png$/', basename($path), $matches) === 1) {
+                clearstatcache(true, $path);
+                $modified = @filemtime($path);
+                $screenshots[$path] = ['page' => (int) $matches[1], 'modified' => $modified === false ? null : $modified];
+            }
+        }
+
+        return $screenshots;
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     * @return array<int, true>|null
+     */
+    private function targetPages(array $options): ?array
+    {
+        $value = $this->scalar($options, 'pages');
+
+        if ($value === null) {
+            return null;
+        }
+
+        $pages = [];
+
+        foreach (explode(',', (string) $value) as $part) {
+            $bounds = array_map(intval(...), explode('-', trim($part), 2));
+            $pages += array_fill_keys(range($bounds[0], $bounds[1] ?? $bounds[0]), true);
+        }
+
+        return $pages;
     }
 
     /** @return array<string, mixed> */

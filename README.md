@@ -200,6 +200,8 @@ $files = Parsel::file('document.pdf')
     ->screenshots('/path/to/screenshots');
 ```
 
+LiteParse writes one `page_<N>.png` file per rendered page. `screenshots()` returns the paths of the files written by that call, sorted by page number; other files already in the directory are left alone and not returned.
+
 ## Binary resolution
 
 Each local driver resolves its executable in this order:
