@@ -169,6 +169,8 @@ $options = LiteParseOptions::make()->option('new-upstream-flag', 42);
 $options = AnyDocOptions::make()->option('new-upstream-flag');
 ```
 
+When the CLI exits with a non-zero code, Parsel throws `ParseFailedException` with the `exitCode`, `stderr`, and the `command` that was run. Values of secret flags (`--password`, `--api-key`, `--ocr-server-header`, including the `--flag=value` form) are replaced with `********` in `command`, so the exception is safe to log or report.
+
 ## Structured LiteParse output
 
 ```php
