@@ -21,9 +21,8 @@ final readonly class CliProcess
     /**
      * @param  callable(string): list<string>  $command
      * @param  array<int, class-string<ParseFailedException>>  $failures  Exception classes keyed by exit code.
-     * @param  (callable(ProcessResult): bool)|null  $accepts  Treats a non-zero exit as success when it returns true.
      */
-    public function run(Source $source, #[SensitiveParameter] callable $command, ?float $timeout, string $driver, array $failures = [], ?callable $accepts = null): ProcessResult
+    public function run(Source $source, #[SensitiveParameter] callable $command, ?float $timeout, string $driver, array $failures = []): ProcessResult
     {
         [$file, $temporary] = $this->resolveFile($source);
 
@@ -35,15 +34,7 @@ final readonly class CliProcess
             }
         }
 
-        return $this->ensureSuccessful($result, $driver, $failures, $accepts);
-    }
-
-    /**
-     * @param  list<string>  $command
-     */
-    public function execute(#[SensitiveParameter] array $command, ?float $timeout, string $driver): ProcessResult
-    {
-        return $this->ensureSuccessful($this->process->run($command, null, $timeout), $driver, []);
+        return $this->ensureSuccessful($result, $driver, $failures);
     }
 
     /**
@@ -57,15 +48,14 @@ final readonly class CliProcess
 
     /**
      * @param  array<int, class-string<ParseFailedException>>  $failures
-     * @param  (callable(ProcessResult): bool)|null  $accepts
      */
-    private function ensureSuccessful(#[SensitiveParameter] ProcessResult $result, string $driver, array $failures, ?callable $accepts = null): ProcessResult
+    private function ensureSuccessful(#[SensitiveParameter] ProcessResult $result, string $driver, array $failures): ProcessResult
     {
         if ($result->timedOut()) {
             throw ParseTimedOutException::fromResult($result, $driver);
         }
 
-        if (! $result->successful() && ($accepts === null || ! $accepts($result))) {
+        if (! $result->successful()) {
             $exception = $failures[$result->exitCode] ?? ParseFailedException::class;
 
             throw $exception::fromResult($result, $driver);

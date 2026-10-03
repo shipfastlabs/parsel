@@ -24,9 +24,4 @@ final readonly class Parser
     {
         return new PendingParse($this->driver, Source::fromBytes($contents, $extension), $this->files, $this->timeout);
     }
-
-    public function directory(string $path): PendingBatch
-    {
-        return new PendingBatch($this->driver, $path, $this->timeout);
-    }
 }

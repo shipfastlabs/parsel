@@ -57,8 +57,6 @@ vendor/bin/parsel-install --driver=liteparse --with-system-dependencies
 | Structured pages and coordinates | Yes | No |
 | Lazy pages | Yes | No |
 | Screenshots | Yes | No |
-| Complexity / OCR detection | Yes | No |
-| Batch directories | Yes | No |
 | OCR | Yes | No |
 
 Parsel is tested against LiteParse 2.15.x and AnyDoc 0.2.x.
@@ -321,31 +319,6 @@ foreach ($document->pages as $page) {
 }
 ```
 
-LiteParse emits richer per-page data when you pass the matching CLI flags (for now through `option()`). A field stays `null` when its flag was not passed:
-
-| Flag | Field |
-| --- | --- |
-| `extract-text-metadata` | `$item->rotation` (font metrics and colors such as `fontWeight`, `fontHeight`, `fontAscent`, `fontDescent`, `textWidth`, `fillColor`, `strokeColor` are filled whenever LiteParse reports them) |
-| `extract-content-bounds` | `$page->contentBounds` (`BoundingBox` with `x`, `y`, `width`, `height`) |
-| `complexity` | `$page->complexity` |
-| `extract-annotations` | `$page->annotations` |
-| `extract-form-fields` | `$page->formFields`, `$document->formType()` |
-| `extract-structure-tree` | `$page->structureTree` |
-| `extract-vector-graphics` | `$page->vectorGraphics` |
-| `extract-images` | `$document->images()` |
-
-```php
-$document = Parsel::file('document.pdf')
-    ->withProviderOptions(LiteParseOptions::make()->option('extract-content-bounds')->option('complexity'))
-    ->parse();
-
-$page = $document->page(1);
-$page->contentBounds?->width;
-$page->complexity['needs_ocr'] ?? null;
-```
-
-Complexity, annotations, form fields, the structure tree, vector graphics and images are exposed as the raw arrays decoded from LiteParse's JSON. The top-level `images` and `form_type` keys also remain in `$document->metadata`.
-
 Stream large documents without decoding the complete page array:
 
 ```php
@@ -389,49 +362,6 @@ $files = Parsel::file('document.pdf')
 
 LiteParse writes one `page_<N>.png` file per rendered page. `screenshots()` renders into a private temporary directory, moves the produced files into the destination (replacing same-named files, as LiteParse itself does) and returns exactly those paths, sorted by page number. Other files already in the directory are left alone and not returned.
 
-## Complexity and OCR detection
-
-LiteParse can check whether a document needs OCR before you run an expensive parse. `complexity()` runs `lit is-complex` and returns per-page signals; `needsOcr()` is a shortcut for the overall verdict. Page selection, maximum pages, password, and binary options are reused; other parse options are ignored.
-
-```php
-if (Parsel::file('scan.pdf')->needsOcr()) {
-    $document = Parsel::file('scan.pdf')
-        ->withProviderOptions(LiteParseOptions::make()->withOcr())
-        ->parse();
-}
-
-$complexity = Parsel::file('report.pdf')
-    ->withProviderOptions(LiteParseOptions::make()->pageRange(1, 10))
-    ->complexity();
-
-$complexity->needsOcr();               // bool
-$complexity->pagesNeedingOcr();        // [1, 3]
-$complexity->pagesWithComplexLayout(); // pages with tables, columns, or dense graphics
-
-$page = $complexity->page(1);
-$page->reasons;          // ['sparse-text', 'embedded-images']
-$page->layout?->reasons; // ['table-likely']
-```
-
-Layout signals (`hasComplexLayout()`) are independent of the OCR verdict: they indicate that the text-only path may mangle reading order or structure.
-
-## Batch parsing directories
-
-LiteParse can parse a whole directory in one `lit batch-parse` process. `saveTo()` writes one file per document, mirroring the input layout (`in/sub/report.pdf` becomes `out/sub/report.md`), creates the output directory when needed, and returns the written files:
-
-```php
-$files = Parsel::directory('/path/to/inbox')
-    ->withProviderOptions(LiteParseOptions::make()->maxPages(20)->withDpi(200))
-    ->recursive()
-    ->only('pdf')
-    ->withTimeout(600)
-    ->saveTo('/path/to/parsed', 'markdown');
-```
-
-The format is `markdown` (`.md`, the default), `text` (`.txt`) or `json` (`.json`). Without `only()`, every file type LiteParse supports is processed; `recursive()` descends into subdirectories.
-
-Batch runs accept the max-pages, password, OCR language/server/headers/workers, DPI, binary and raw `option()` settings, plus the JSON enrichment options (except `withComplexity()`) when saving JSON. Page selection, tessdata path, small-text preservation, image, link, header/footer, page-error, config file and complexity options have no `batch-parse` flag and throw `InvalidProviderOptionsException`. A missing input directory throws `FilesystemException`. If any document fails, LiteParse still writes the others but exits non-zero, so Parsel throws `ParseFailedException` with the per-file errors in its message.
-
 ## Binary resolution
 
 Each local driver resolves its executable in this order:
@@ -459,9 +389,7 @@ Parsel::extend('company-api', function (ParselManager $manager): Driver {
 $markdown = Parsel::driver('company-api')->file('report.pdf')->markdown();
 ```
 
-Drivers are resolved lazily and cached by the manager. Implement `TextDriver`, `StructuredDocumentDriver`, `LazyPageDriver`, `ScreenshotDriver`, or `ComplexityDriver` to add those operations. A remote driver may use any HTTP client and does not need to depend on Parsel's CLI process infrastructure.
-
-Drivers are resolved lazily and cached by the manager. Implement `TextDriver`, `StructuredDocumentDriver`, `LazyPageDriver`, `ScreenshotDriver`, `ComplexityDriver`, or `BatchDriver` to add those operations. A remote driver may use any HTTP client and does not need to depend on Parsel's CLI process infrastructure.
+Drivers are resolved lazily and cached by the manager. Implement `TextDriver`, `StructuredDocumentDriver`, `LazyPageDriver`, or `ScreenshotDriver` to add those operations. A remote driver may use any HTTP client and does not need to depend on Parsel's CLI process infrastructure.
 
 ## Testing
 

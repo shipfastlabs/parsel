@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Shipfastlabs\Parsel;
 
 use Generator;
-use Shipfastlabs\Parsel\Contracts\ComplexityDriver;
 use Shipfastlabs\Parsel\Contracts\Driver;
 use Shipfastlabs\Parsel\Contracts\Filesystem;
 use Shipfastlabs\Parsel\Contracts\LazyPageDriver;
@@ -14,7 +13,6 @@ use Shipfastlabs\Parsel\Contracts\ScreenshotDriver;
 use Shipfastlabs\Parsel\Contracts\StructuredDocumentDriver;
 use Shipfastlabs\Parsel\Contracts\TextDriver;
 use Shipfastlabs\Parsel\Data\Document;
-use Shipfastlabs\Parsel\Data\DocumentComplexity;
 use Shipfastlabs\Parsel\Data\Page;
 use Shipfastlabs\Parsel\Exceptions\InvalidProviderOptionsException;
 use Shipfastlabs\Parsel\Exceptions\UnsupportedCapabilityException;
@@ -132,20 +130,6 @@ final class PendingParse
         }
 
         yield from $this->driver->pages($this->request());
-    }
-
-    public function complexity(): DocumentComplexity
-    {
-        if (! $this->driver instanceof ComplexityDriver) {
-            throw UnsupportedCapabilityException::forDriver($this->driver->name(), 'complexity');
-        }
-
-        return $this->driver->complexity($this->request());
-    }
-
-    public function needsOcr(): bool
-    {
-        return $this->complexity()->needsOcr();
     }
 
     private function json(): string
