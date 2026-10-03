@@ -34,6 +34,22 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
         'preserve_small_text', 'password', 'image_mode', 'image_directory', 'links',
         'keep_headers_and_footers', 'ocr_server_headers', 'continue_on_page_error', 'config', 'binary', 'extra',
         'screenshot_extra',
+        'extract_blocks', 'extract_annotations', 'extract_form_fields', 'extract_structure_tree',
+        'extract_content_bounds', 'extract_vector_graphics', 'extract_text_metadata', 'extract_images',
+        'extract_xfa_packets', 'complexity',
+    ];
+
+    private const array JSON_FLAGS = [
+        'extract_blocks' => '--extract-blocks',
+        'extract_annotations' => '--extract-annotations',
+        'extract_form_fields' => '--extract-form-fields',
+        'extract_structure_tree' => '--extract-structure-tree',
+        'extract_content_bounds' => '--extract-content-bounds',
+        'extract_vector_graphics' => '--extract-vector-graphics',
+        'extract_text_metadata' => '--extract-text-metadata',
+        'extract_images' => '--extract-images',
+        'extract_xfa_packets' => '--extract-xfa-packets',
+        'complexity' => '--complexity',
     ];
 
     public function __construct(
@@ -290,6 +306,14 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
 
             if (($options['keep_headers_and_footers'] ?? false) === true) {
                 $command[] = '--keep-headers-footers';
+            }
+        }
+
+        if ($format === OutputFormat::Json) {
+            foreach (self::JSON_FLAGS as $key => $flag) {
+                if (($options[$key] ?? false) === true) {
+                    $command[] = $flag;
+                }
             }
         }
 
