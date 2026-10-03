@@ -18,8 +18,9 @@ final readonly class CliProcess
 
     /**
      * @param  callable(string): list<string>  $command
+     * @param  (callable(ProcessResult): bool)|null  $accepts  Treats a non-zero exit as success when it returns true.
      */
-    public function run(Source $source, callable $command, ?float $timeout, string $driver): ProcessResult
+    public function run(Source $source, callable $command, ?float $timeout, string $driver, ?callable $accepts = null): ProcessResult
     {
         [$file, $temporary] = $this->resolveFile($source);
 
@@ -31,7 +32,7 @@ final readonly class CliProcess
             }
         }
 
-        if (! $result->successful()) {
+        if (! $result->successful() && ($accepts === null || ! $accepts($result))) {
             throw ParseFailedException::fromResult($result, $driver);
         }
 

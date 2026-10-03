@@ -84,3 +84,19 @@ it('streams pages of a real pdf lazily', function (): void {
         ->and($pages[0]->items)->not->toBeEmpty()
         ->and($pages[0]->items[0]->text)->toBeString();
 })->group('integration');
+
+it('reports per-page complexity of a real pdf', function (): void {
+    if (! litAvailable()) {
+        $this->markTestSkipped('lit binary not installed');
+    }
+
+    $complexity = Parsel::file(demoPdf())
+        ->withProviderOptions(LiteParseOptions::make()->pageRange(1, 3))
+        ->complexity();
+
+    expect($complexity->pageCount())->toBe(3)
+        ->and($complexity->needsOcr())->toBeTrue()
+        ->and($complexity->pagesNeedingOcr())->toBe([1, 3])
+        ->and($complexity->page(2)->needsOcr)->toBeFalse()
+        ->and($complexity->page(1)->layout?->reasons)->toBe(['table-likely']);
+})->group('integration');

@@ -24,6 +24,19 @@ final class Cast
         return is_numeric($value) ? (float) $value : 0.0;
     }
 
+    public static function bool(mixed $value): bool
+    {
+        return $value === true;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function strings(mixed $value): array
+    {
+        return is_array($value) ? array_values(array_filter($value, is_string(...))) : [];
+    }
+
     /**
      * @param  array<string, mixed>  $raw
      * @param  list<string>  $keys

@@ -21,3 +21,14 @@ it('casts numeric values to float', function (): void {
         ->and(Cast::float(2))->toBe(2.0)
         ->and(Cast::float([]))->toBe(0.0);
 });
+
+it('casts only true to a true boolean', function (): void {
+    expect(Cast::bool(true))->toBeTrue()
+        ->and(Cast::bool(1))->toBeFalse()
+        ->and(Cast::bool('true'))->toBeFalse();
+});
+
+it('keeps only string entries of a list', function (): void {
+    expect(Cast::strings(['a', 1, 'b', null]))->toBe(['a', 'b'])
+        ->and(Cast::strings('a'))->toBe([]);
+});

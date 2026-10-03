@@ -56,6 +56,8 @@ it('rejects unsupported anydoc capabilities before executing the driver', functi
     'structured document' => ['parse', []],
     'array' => ['toArray', []],
     'screenshots' => ['screenshots', ['/tmp']],
+    'complexity' => ['complexity', []],
+    'needs OCR' => ['needsOcr', []],
 ]);
 
 it('rejects unsupported generators and save formats lazily', function (): void {

@@ -8,6 +8,7 @@ use Generator;
 use JsonException;
 use JsonMachine\Items;
 use JsonMachine\JsonDecoder\ExtJsonDecoder;
+use Shipfastlabs\Parsel\Contracts\ComplexityDriver;
 use Shipfastlabs\Parsel\Contracts\Driver;
 use Shipfastlabs\Parsel\Contracts\Filesystem;
 use Shipfastlabs\Parsel\Contracts\LazyPageDriver;
@@ -15,6 +16,7 @@ use Shipfastlabs\Parsel\Contracts\ScreenshotDriver;
 use Shipfastlabs\Parsel\Contracts\StructuredDocumentDriver;
 use Shipfastlabs\Parsel\Contracts\TextDriver;
 use Shipfastlabs\Parsel\Data\Document;
+use Shipfastlabs\Parsel\Data\DocumentComplexity;
 use Shipfastlabs\Parsel\Data\Page;
 use Shipfastlabs\Parsel\Enums\OutputFormat;
 use Shipfastlabs\Parsel\Exceptions\FilesystemException;
@@ -25,8 +27,9 @@ use Shipfastlabs\Parsel\Support\BinaryResolver;
 use Shipfastlabs\Parsel\Support\CliArguments;
 use Shipfastlabs\Parsel\Support\CliProcess;
 use Shipfastlabs\Parsel\Support\NativeFilesystem;
+use Shipfastlabs\Parsel\Support\ProcessResult;
 
-final readonly class LiteParseDriver implements Driver, LazyPageDriver, ScreenshotDriver, StructuredDocumentDriver, TextDriver
+final readonly class LiteParseDriver implements ComplexityDriver, Driver, LazyPageDriver, ScreenshotDriver, StructuredDocumentDriver, TextDriver
 {
     private const array OPTION_KEYS = [
         'pages', 'max_pages', 'ocr', 'ocr_language', 'ocr_server_url', 'tessdata_path', 'workers', 'dpi',
@@ -70,7 +73,10 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
 
     public function document(ParseRequest $request): Document
     {
-        return Document::fromLiteParseJson($this->decodeJson($this->json($request)));
+        /** @var array<string, mixed> $decoded */
+        $decoded = $this->decodeJson($this->json($request));
+
+        return Document::fromLiteParseJson($decoded);
     }
 
     public function json(ParseRequest $request): string
@@ -102,6 +108,40 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
         );
 
         return $this->files->files($directory);
+    }
+
+    public function complexity(ParseRequest $request): DocumentComplexity
+    {
+        $options = $request->options;
+        $binary = $this->resolver->resolve($this->string($options, 'binary') ?? $this->configuredBinary);
+
+        $result = $this->process->run(
+            $request->source,
+            function (string $file) use ($binary, $options): array {
+                $command = CliArguments::command($binary, 'is-complex', $file, '--compact', '-q');
+                $command = $this->appendFlag($command, 'target-pages', $this->scalar($options, 'pages'));
+                $command = $this->appendFlag($command, 'max-pages', $this->scalar($options, 'max_pages'));
+                $command = $this->appendFlag($command, 'password', $this->scalar($options, 'password'));
+
+                return CliArguments::appendExtra($command, $options);
+            },
+            $request->timeout,
+            $this->name(),
+            $this->reportedPagesNeedingOcr(...),
+        );
+
+        $decoded = $this->decodeJson(trim($result->stdout));
+
+        if (! array_is_list($decoded)) {
+            throw InvalidOutputException::malformedJson('expected a JSON array', $this->name());
+        }
+
+        return DocumentComplexity::fromLiteParseJson($decoded);
+    }
+
+    private function reportedPagesNeedingOcr(ProcessResult $result): bool
+    {
+        return $result->exitCode === 1 && str_starts_with(ltrim($result->stdout), '[');
     }
 
     public function pages(ParseRequest $request): Generator
@@ -142,7 +182,7 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
         )->stdout;
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<array-key, mixed> */
     private function decodeJson(string $json): array
     {
         if ($json === '') {
@@ -159,7 +199,6 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
             throw InvalidOutputException::malformedJson('expected a JSON object', $this->name());
         }
 
-        /** @var array<string, mixed> $decoded */
         return $decoded;
     }
 
