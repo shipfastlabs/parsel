@@ -364,3 +364,16 @@ it('loads a liteparse config file and tolerates page errors', function (): void 
 
     expect($document->pageCount())->toBe(1);
 })->group('integration');
+
+it('includes JSON enrichments from a real pdf', function (): void {
+    $pending = Parsel::file(demoPdf())
+        ->withProviderOptions(LiteParseOptions::make()->page(1)->withoutOcr()->withComplexity()->extractContentBounds()->extractXfaPackets());
+
+    $path = $pending->save(sys_get_temp_dir().DIRECTORY_SEPARATOR.'parsel_enriched_'.uniqid().'.json');
+    $json = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+    unlink($path);
+
+    expect($json)->toHaveKey('xfa_packets')
+        ->and($json['pages'][0])->toHaveKeys(['complexity', 'content_bounds'])
+        ->and($pending->parse()->metadata)->toHaveKey('xfa_packets');
+})->group('integration');

@@ -96,3 +96,22 @@ it('drops hosted ocr credentials when switching anydoc back to reject', function
 it('rejects unknown anydoc ocr modes', function (): void {
     AnyDocOptions::make()->ocr('tesseract');
 })->throws(InvalidProviderOptionsException::class, "Invalid anydoc provider option [ocr]: 'tesseract'. Expected one of: reject, hosted.");
+
+it('builds liteparse JSON enrichment options', function (): void {
+    expect(LiteParseOptions::make()->extractAll()->toArray())->toBe([
+        'extract_blocks' => true,
+        'extract_annotations' => true,
+        'extract_form_fields' => true,
+        'extract_structure_tree' => true,
+        'extract_content_bounds' => true,
+        'extract_vector_graphics' => true,
+        'extract_text_metadata' => true,
+        'extract_images' => true,
+        'extract_xfa_packets' => true,
+        'complexity' => true,
+    ])->and(LiteParseOptions::make()->extractAll()->extractImages(false)->withComplexity(false)->toArray())->toMatchArray([
+        'extract_blocks' => true,
+        'extract_images' => false,
+        'complexity' => false,
+    ]);
+});
