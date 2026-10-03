@@ -169,6 +169,16 @@ $options = LiteParseOptions::make()->option('new-upstream-flag', 42);
 $options = AnyDocOptions::make()->option('new-upstream-flag');
 ```
 
+LiteParse `option()` flags are passed to `lit parse` only (used by `markdown()`, `text()`, `parse()`, `toArray()`, `save()`, and `lazyPages()`), because most parse flags are rejected by `lit screenshot`. Use `screenshotOption()` for a flag that should be passed to `lit screenshot` instead:
+
+```php
+$options = LiteParseOptions::make()
+    ->option('extract-blocks')                     // lit parse only
+    ->screenshotOption('new-screenshot-flag', 2);  // lit screenshot only
+```
+
+As an array, these are the `extra` and `screenshot_extra` keys.
+
 ## Structured LiteParse output
 
 ```php

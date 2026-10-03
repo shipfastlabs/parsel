@@ -31,7 +31,7 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
     private const array OPTION_KEYS = [
         'pages', 'max_pages', 'ocr', 'ocr_language', 'ocr_server_url', 'tessdata_path', 'workers', 'dpi',
         'preserve_small_text', 'password', 'image_mode', 'image_directory', 'links',
-        'keep_headers_and_footers', 'binary', 'extra',
+        'keep_headers_and_footers', 'binary', 'extra', 'screenshot_extra',
     ];
 
     public function __construct(
@@ -95,7 +95,7 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
                 $command = $this->appendFlag($command, 'dpi', $this->scalar($options, 'dpi'));
                 $command = $this->appendFlag($command, 'password', $this->scalar($options, 'password'));
 
-                return CliArguments::appendExtra($command, $options);
+                return CliArguments::appendExtra($command, $options, 'screenshot_extra');
             },
             $request->timeout,
             $this->name(),

@@ -12,7 +12,7 @@ it('builds liteparse options fluently', function (): void {
         ->maxPages(20)->ocr()->withOcr('eng', '/tess', 'http://ocr', 4)
         ->withDpi(200)->preserveSmallText()->withPassword('pw')
         ->withImages(ImageMode::Placeholder, '/images')->withoutLinks()->keepHeadersAndFooters()
-        ->withBinary('/lit')->option('future');
+        ->withBinary('/lit')->option('future')->screenshotOption('shot', 2);
 
     expect($options->provider())->toBe('liteparse')
         ->and($options->toArray())->toMatchArray([
@@ -24,6 +24,7 @@ it('builds liteparse options fluently', function (): void {
             'image_mode' => 'placeholder',
             'binary' => '/lit',
             'extra' => ['future' => true],
+            'screenshot_extra' => ['shot' => 2],
         ]);
 });
 
@@ -35,7 +36,7 @@ it('builds disabled liteparse options without an extra bucket', function (): voi
         'image_mode' => 'off',
         'links' => false,
         'preserve_small_text' => false,
-    ])->not->toHaveKey('extra');
+    ])->not->toHaveKey('extra')->not->toHaveKey('screenshot_extra');
 });
 
 it('builds anydoc options fluently', function (): void {

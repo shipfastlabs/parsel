@@ -121,11 +121,31 @@ it('builds screenshot commands and returns destination files', function (): void
     $fake = new FakeProcessRunner(['screenshot' => '']);
 
     $files = fakeParse($fake)
-        ->withProviderOptions(LiteParseOptions::make()->page(1)->withDpi(150)->withPassword('pw')->option('foo'))
+        ->withProviderOptions(LiteParseOptions::make()->page(1)->withDpi(150)->withPassword('pw')->screenshotOption('foo')->screenshotOption('scale', 2))
         ->screenshots($directory);
 
     expect($files)->toBe([$directory.DIRECTORY_SEPARATOR.'page.png'])
-        ->and($fake->recordedCommands()[0])->toContain('screenshot', '--target-pages', '1', '--dpi', '150', '--password', 'pw', '--foo');
+        ->and($fake->recordedCommands()[0])->toContain('screenshot', '--target-pages', '1', '--dpi', '150', '--password', 'pw', '--foo', '--scale', '2');
+
+    unlink($directory.DIRECTORY_SEPARATOR.'page.png');
+    rmdir($directory);
+});
+
+it('passes parse-only extra options to parse but not to screenshot', function (): void {
+    $directory = sys_get_temp_dir().DIRECTORY_SEPARATOR.'parsel_shots_'.uniqid();
+    mkdir($directory);
+    file_put_contents($directory.DIRECTORY_SEPARATOR.'page.png', 'png');
+    $fake = new FakeProcessRunner(['screenshot' => '', '--format text' => 'ok']);
+    $options = LiteParseOptions::make()->option('extract-blocks')->screenshotOption('shot-only');
+
+    fakeParse($fake)->withProviderOptions($options)->screenshots($directory);
+    fakeParse($fake)->withProviderOptions($options)->text();
+
+    [$screenshot, $parse] = $fake->recordedCommands();
+
+    expect($screenshot)->toBe(['lit', 'screenshot', fixture('sample.pdf'), '-o', $directory, '-q', '--shot-only'])
+        ->and($parse)->toContain('--extract-blocks')
+        ->not->toContain('--shot-only');
 
     unlink($directory.DIRECTORY_SEPARATOR.'page.png');
     rmdir($directory);

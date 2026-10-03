@@ -84,3 +84,23 @@ it('streams pages of a real pdf lazily', function (): void {
         ->and($pages[0]->items)->not->toBeEmpty()
         ->and($pages[0]->items[0]->text)->toBeString();
 })->group('integration');
+
+it('screenshots a real pdf without forwarding parse-only extra options', function (): void {
+    if (! litAvailable()) {
+        $this->markTestSkipped('lit binary not installed');
+    }
+
+    $directory = sys_get_temp_dir().DIRECTORY_SEPARATOR.'parsel_shots_'.uniqid();
+    mkdir($directory);
+
+    try {
+        $files = Parsel::file(demoPdf())
+            ->withProviderOptions(LiteParseOptions::make()->page(1)->withDpi(72)->option('extract-blocks'))
+            ->screenshots($directory);
+
+        expect($files)->not->toBeEmpty();
+    } finally {
+        array_map(unlink(...), glob($directory.DIRECTORY_SEPARATOR.'*') ?: []);
+        rmdir($directory);
+    }
+})->group('integration');
