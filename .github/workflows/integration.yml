@@ -1,0 +1,61 @@
+name: Integration
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly, so silent upstream CLI changes are caught even without pushes.
+    - cron: '17 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    name: Integration P8.5 - ubuntu-latest - latest CLIs
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+      with:
+        php-version: 8.5
+        extensions: dom, mbstring, zip
+        coverage: none
+
+    - name: Setup Node
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: 22
+
+    - name: Install upstream CLIs
+      run: npm install --global @llamaindex/liteparse@latest @firecrawl/anydoc@latest
+
+    - name: Show upstream CLI versions
+      run: npm ls --global --depth=0 @llamaindex/liteparse @firecrawl/anydoc
+
+    - name: Get Composer cache directory
+      id: composer-cache
+      shell: bash
+      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+    - name: Cache dependencies
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.composer-cache.outputs.dir }}
+        key: dependencies-php-8.5-os-ubuntu-latest-composer-${{ hashFiles('composer.json') }}
+        restore-keys: dependencies-php-8.5-os-ubuntu-latest-composer-
+
+    - name: Install Composer dependencies
+      run: composer update --prefer-stable --no-interaction --prefer-dist
+
+    - name: Integration Tests
+      env:
+        PARSEL_REQUIRE_BINARIES: 1
+      run: vendor/bin/pest --group=integration
