@@ -20,9 +20,9 @@ final class CliArguments
      * @param  array<string, mixed>  $options
      * @return list<string>
      */
-    public static function appendExtra(array $command, array $options): array
+    public static function appendExtra(array $command, array $options, string $key = 'extra'): array
     {
-        $extra = $options['extra'] ?? [];
+        $extra = $options[$key] ?? [];
 
         if (! is_array($extra)) {
             return $command;

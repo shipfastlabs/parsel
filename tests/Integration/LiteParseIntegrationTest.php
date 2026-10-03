@@ -315,3 +315,17 @@ it('runs built-in OCR with language data from a local tessdata path', function (
         removeIntegrationDirectory($directory);
     }
 })->group('integration');
+
+it('screenshots a real pdf without forwarding parse-only extra options', function (): void {
+    $directory = integrationDirectory();
+
+    try {
+        $files = Parsel::file(demoPdf())
+            ->withProviderOptions(LiteParseOptions::make()->page(1)->withDpi(36)->option('extract-blocks'))
+            ->screenshots($directory);
+
+        expect($files)->toHaveCount(1);
+    } finally {
+        removeIntegrationDirectory($directory);
+    }
+})->group('integration');

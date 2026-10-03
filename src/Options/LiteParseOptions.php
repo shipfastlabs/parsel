@@ -15,6 +15,9 @@ final class LiteParseOptions implements ProviderOptions
     /** @var array<string, string|int|bool> */
     private array $extra = [];
 
+    /** @var array<string, string|int|bool> */
+    private array $screenshotExtra = [];
+
     public static function make(): self
     {
         return new self;
@@ -150,10 +153,27 @@ final class LiteParseOptions implements ProviderOptions
         return $this;
     }
 
+    public function screenshotOption(string $name, string|int|bool $value = true): self
+    {
+        $this->screenshotExtra[$name] = $value;
+
+        return $this;
+    }
+
     /** @return array<string, mixed> */
     public function toArray(): array
     {
-        return $this->extra === [] ? $this->options : [...$this->options, 'extra' => $this->extra];
+        $options = $this->options;
+
+        if ($this->extra !== []) {
+            $options['extra'] = $this->extra;
+        }
+
+        if ($this->screenshotExtra !== []) {
+            $options['screenshot_extra'] = $this->screenshotExtra;
+        }
+
+        return $options;
     }
 
     private function appendPages(string $fragment): self

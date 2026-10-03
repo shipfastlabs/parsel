@@ -20,6 +20,18 @@ it('accepts strict arrays and merges repeated provider options', function (): vo
     expect($fake->recordedCommands()[0])->toContain('--target-pages', '1-2,5', '--alpha', '--beta', '2');
 });
 
+it('merges repeated screenshot extra options', function (): void {
+    $fake = new FakeProcessRunner(['screenshot' => '']);
+    $directory = sys_get_temp_dir();
+
+    fakeParse($fake)
+        ->withProviderOptions(['screenshot_extra' => ['alpha' => true]])
+        ->withProviderOptions(['screenshot_extra' => ['beta' => 2]])
+        ->screenshots($directory);
+
+    expect($fake->recordedCommands()[0])->toContain('--alpha', '--beta', '2');
+});
+
 it('rejects unknown and cross-provider options before parsing', function (): void {
     expect(fn (): PendingParse => Parsel::file('a.pdf')->withProviderOptions(['typo' => true]))
         ->toThrow(InvalidProviderOptionsException::class, 'typo')
