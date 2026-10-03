@@ -16,6 +16,19 @@ it('builds a parse failure from a result with stderr', function (): void {
         ->and($exception->getMessage())->toContain('code 2')->toContain('boom');
 });
 
+it('redacts secret flag values from the stored command', function (): void {
+    $exception = ParseFailedException::fromResult(new ProcessResult(
+        2,
+        '',
+        'boom',
+        ['lit', 'parse', 'doc.pdf', '--password', 'hunter2', '--ocr-server-header=Authorization: Bearer t0k3n', '-q'],
+    ));
+
+    expect($exception->command)
+        ->toBe(['lit', 'parse', 'doc.pdf', '--password', '********', '--ocr-server-header=********', '-q'])
+        ->and($exception->getMessage())->not->toContain('hunter2');
+});
+
 it('uses a placeholder when there is no stderr', function (): void {
     expect(ParseFailedException::fromResult(new ProcessResult(1, '', '', ['lit']))->getMessage())
         ->toContain('(no error output)');
