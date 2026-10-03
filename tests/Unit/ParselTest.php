@@ -8,14 +8,7 @@ use Shipfastlabs\Parsel\Exceptions\DriverNotFoundException;
 use Shipfastlabs\Parsel\ParselManager;
 use Shipfastlabs\Parsel\Parser;
 use Shipfastlabs\Parsel\ParseRequest;
-use Shipfastlabs\Parsel\PendingParse;
 use Shipfastlabs\Parsel\Support\FakeProcessRunner;
-
-it('creates pending parses through the default and named drivers', function (): void {
-    expect(Parsel::file('document.pdf'))->toBeInstanceOf(PendingParse::class)
-        ->and(Parsel::bytes('raw', 'pdf'))->toBeInstanceOf(PendingParse::class)
-        ->and(Parsel::driver('anydoc'))->toBeInstanceOf(Parser::class);
-});
 
 it('defaults to liteparse and can change the default driver', function (): void {
     $fake = Parsel::fake(['anydoc' => '# anydoc']);
@@ -30,7 +23,6 @@ it('supports an injectable manager and fluent default selection', function (): v
     $manager = new ParselManager(process: $fake, binaries: ['anydoc' => 'anydoc'])->defaultDriver('anydoc');
 
     expect($manager->file(fixture('sample.pdf'))->markdown())->toBe('managed')
-        ->and($manager->bytes('raw', 'pdf'))->toBeInstanceOf(PendingParse::class)
         ->and($manager->forgetDrivers())->toBe($manager);
 });
 
@@ -102,7 +94,7 @@ it('fakes and swaps process runners and applies default timeout', function (): v
     $fake = Parsel::fake(['--format text' => 'fake']);
 
     expect(Parsel::file(fixture('sample.pdf'))->text())->toBe('fake')
-        ->and($fake)->toBeInstanceOf(FakeProcessRunner::class);
+        ->and($fake->ranCount())->toBe(1);
 
     Parsel::swap(new FakeProcessRunner(['--format text' => 'swapped']));
     expect(Parsel::file(fixture('sample.pdf'))->text())->toBe('swapped');
@@ -110,8 +102,12 @@ it('fakes and swaps process runners and applies default timeout', function (): v
 
 it('flushes facade configuration', function (): void {
     Parsel::defaultDriver('anydoc');
-    Parsel::fake();
+    Parsel::extend('custom', fn (ParselManager $manager): Driver => throw new LogicException('Flushed drivers must not be resolved.'));
     Parsel::flush();
 
-    expect(Parsel::file('document.pdf'))->toBeInstanceOf(PendingParse::class);
+    $fake = Parsel::fake(['--format text' => 'ok']);
+    Parsel::file(fixture('sample.pdf'))->text();
+
+    expect($fake->recordedCommands()[0][0])->toBe('lit')
+        ->and(fn (): Parser => Parsel::driver('custom'))->toThrow(DriverNotFoundException::class, 'custom');
 });

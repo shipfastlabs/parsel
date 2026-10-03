@@ -143,8 +143,7 @@ it('maps documented anydoc exit codes to specific exceptions', function (int $ex
         Parsel::driver('anydoc')->file(fixture('sample.pdf'))->markdown();
         $this->fail('Expected the conversion to fail.');
     } catch (ParseFailedException $parseFailedException) {
-        expect($parseFailedException)->toBeInstanceOf($exception)
-            ->and($parseFailedException::class)->toBe($exception)
+        expect($parseFailedException::class)->toBe($exception)
             ->and($parseFailedException->exitCode)->toBe($exitCode)
             ->and($parseFailedException->stderr)->toBe($stderr)
             ->and($parseFailedException->getMessage())->toContain('anydoc exited with code '.$exitCode);

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Shipfastlabs\Parsel\Data\BoundingBox;
 use Shipfastlabs\Parsel\Data\Page;
-use Shipfastlabs\Parsel\Data\TextItem;
 
 it('maps a page with positioned text items', function (): void {
     $page = Page::fromArray([
@@ -22,7 +21,7 @@ it('maps a page with positioned text items', function (): void {
         ->and($page->height)->toBe(792.0)
         ->and($page->text)->toBe('hello')
         ->and($page->items)->toHaveCount(1)
-        ->and($page->items[0])->toBeInstanceOf(TextItem::class);
+        ->and($page->items[0]->text)->toBe('hello');
 });
 
 it('tolerates a non-array textItems value', function (): void {
@@ -38,7 +37,7 @@ it('falls back to snake_case text_items key', function (): void {
     ]);
 
     expect($page->items)->toHaveCount(1)
-        ->and($page->items[0])->toBeInstanceOf(TextItem::class);
+        ->and($page->items[0]->x)->toBe(1.0);
 });
 
 it('skips text items that are not arrays', function (): void {

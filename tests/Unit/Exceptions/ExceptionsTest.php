@@ -42,9 +42,9 @@ it('builds specific parse failures that remain parse failures', function (): voi
     $usage = ParserUsageException::fromResult(new ProcessResult(2, '', "anydoc: missing input\n", ['anydoc']), 'anydoc');
     $ocr = OcrRequiredException::fromResult(new ProcessResult(3, '', '', ['anydoc']), 'anydoc');
 
-    expect($usage)->toBeInstanceOf(ParserUsageException::class)->toBeInstanceOf(ParseFailedException::class)
+    expect($usage)->toBeInstanceOf(ParseFailedException::class)
         ->and($usage->getMessage())->toBe('anydoc exited with code 2: anydoc: missing input')
-        ->and($ocr)->toBeInstanceOf(OcrRequiredException::class)->toBeInstanceOf(ParseFailedException::class)
+        ->and($ocr)->toBeInstanceOf(ParseFailedException::class)
         ->and($ocr->getMessage())->toStartWith('anydoc exited with code 3: (no error output). Scanned')
         ->toContain('withHostedOcr()')->toContain('withOcr()');
 });

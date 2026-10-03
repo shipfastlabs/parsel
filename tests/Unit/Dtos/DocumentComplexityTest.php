@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Shipfastlabs\Parsel\Data\DocumentComplexity;
 use Shipfastlabs\Parsel\Data\LayoutComplexity;
-use Shipfastlabs\Parsel\Data\PageComplexity;
 use Shipfastlabs\Parsel\Exceptions\PageNotFoundException;
 
 function complexityFixture(): DocumentComplexity
@@ -20,11 +19,10 @@ it('hydrates per-page complexity from real is-complex output', function (): void
     $first = $complexity->page(1);
 
     expect($complexity->pageCount())->toBe(3)
-        ->and($first)->toBeInstanceOf(PageComplexity::class)
         ->and($first->needsOcr)->toBeTrue()
         ->and($first->reasons)->toBe(['sparse-text', 'embedded-images'])
         ->and($first->textLength)->toBe(1654)
-        ->and($first->textCoverage)->toBeFloat()
+        ->and($first->textCoverage)->toBe(0.14717023074626923)
         ->and($first->hasSubstantialImages)->toBeTrue()
         ->and($first->imageBlockCount)->toBe(1)
         ->and($first->imageCoverage)->toBeGreaterThan(0.0)
