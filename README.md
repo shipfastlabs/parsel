@@ -107,6 +107,18 @@ Timeout is portable across drivers:
 Parsel::file('report.pdf')->withTimeout(120)->markdown();
 ```
 
+When the parser exceeds the timeout, its process is stopped, any temporary file created for a byte source is removed, and a `ParseTimedOutException` is thrown. Like every Parsel error it extends `ParselException`, and it exposes the exceeded `timeout` (seconds), the `driver` name, and the `command` that was run. A parser that exits with a non-zero code throws `ParseFailedException` instead.
+
+```php
+use Shipfastlabs\Parsel\Exceptions\ParseTimedOutException;
+
+try {
+    $markdown = Parsel::file('report.pdf')->withTimeout(30)->markdown();
+} catch (ParseTimedOutException $e) {
+    report("{$e->driver} gave up after {$e->timeout}s");
+}
+```
+
 `save()` selects the corresponding capability from the extension. Both drivers support `.md` and `.markdown`; LiteParse additionally supports `.txt` and `.json`.
 
 ```php
@@ -243,6 +255,14 @@ $document = Parsel::file('invoice.pdf')->parse();
 $markdown = Parsel::driver('anydoc')->file('report.docx')->markdown();
 
 expect($fake->ranCount())->toBe(2);
+```
+
+Return a `ProcessResult` with `timedOutAfter` set to simulate a timeout:
+
+```php
+use Shipfastlabs\Parsel\Support\ProcessResult;
+
+Parsel::fake(['anydoc' => new ProcessResult(143, '', '', ['anydoc'], timedOutAfter: 30.0)]);
 ```
 
 See [UPGRADE.md](UPGRADE.md) when moving from Parsel 0.x.
