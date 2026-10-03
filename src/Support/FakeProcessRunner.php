@@ -53,6 +53,14 @@ final class FakeProcessRunner implements ProcessRunner
         return array_map(static fn (array $record): array => $record['command'], $this->recorded);
     }
 
+    /**
+     * @return list<string|null>
+     */
+    public function recordedInputs(): array
+    {
+        return array_map(static fn (array $record): ?string => $record['input'], $this->recorded);
+    }
+
     public function ranCount(): int
     {
         return count($this->recorded);

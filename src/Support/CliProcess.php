@@ -34,6 +34,23 @@ final readonly class CliProcess
             }
         }
 
+        return $this->ensureSuccessful($result, $driver, $failures);
+    }
+
+    /**
+     * @param  list<string>  $command
+     * @param  array<int, class-string<ParseFailedException>>  $failures  Exception classes keyed by exit code.
+     */
+    public function runWithInput(#[SensitiveParameter] array $command, string $input, ?float $timeout, string $driver, array $failures = []): ProcessResult
+    {
+        return $this->ensureSuccessful($this->process->run($command, $input, $timeout), $driver, $failures);
+    }
+
+    /**
+     * @param  array<int, class-string<ParseFailedException>>  $failures
+     */
+    private function ensureSuccessful(#[SensitiveParameter] ProcessResult $result, string $driver, array $failures): ProcessResult
+    {
         if ($result->timedOut()) {
             throw ParseTimedOutException::fromResult($result, $driver);
         }
