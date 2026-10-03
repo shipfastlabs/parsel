@@ -162,6 +162,26 @@ $markdown = Parsel::driver('anydoc')
     ->markdown();
 ```
 
+AnyDoc does not run OCR itself. By default (`--ocr reject`) a PDF whose pages are scanned or image-only fails with a `ParseFailedException`. AnyDoc 0.2.4+ can instead send those PDFs to [Firecrawl Parse](https://www.firecrawl.dev):
+
+```php
+use Shipfastlabs\Parsel\Enums\AnyDocOcrMode;
+
+$markdown = Parsel::driver('anydoc')
+    ->file('scan.pdf')
+    ->withProviderOptions(
+        AnyDocOptions::make()->withHostedOcr() // or ->withHostedOcr($apiKey, 'https://firecrawl.example.com')
+    )
+    ->markdown();
+
+AnyDocOptions::make()->ocr(AnyDocOcrMode::Hosted); // or ->ocr('hosted')
+AnyDocOptions::make()->rejectOcr();                // explicit default
+```
+
+The equivalent array keys are `ocr` (`reject` or `hosted`), `api_key`, and `api_url`. Without an explicit key AnyDoc reads `FIRECRAWL_API_KEY` (else runs keyless), and without a URL it reads `FIRECRAWL_API_URL` (else `https://api.firecrawl.dev`). Prefer the environment variable for the key: an explicit `api_key` is passed as a command-line argument, which other users on the same machine may be able to see in the process list.
+
+> **Privacy:** hosted OCR uploads the whole document to Firecrawl (or the server at `api_url`) for processing. Only enable it for documents you are allowed to share with that service. Documents that do not need OCR are still converted locally.
+
 Array keys are validated, so typos fail early. For a newly released upstream CLI flag, use the explicit escape hatch:
 
 ```php

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Shipfastlabs\Parsel\Options;
 
 use Shipfastlabs\Parsel\Contracts\ProviderOptions;
+use Shipfastlabs\Parsel\Enums\AnyDocOcrMode;
+use Shipfastlabs\Parsel\Exceptions\InvalidProviderOptionsException;
 
 final class AnyDocOptions implements ProviderOptions
 {
@@ -29,6 +31,40 @@ final class AnyDocOptions implements ProviderOptions
         $this->options['format'] = strtolower(ltrim($format, '.'));
 
         return $this;
+    }
+
+    public function ocr(AnyDocOcrMode|string $mode): self
+    {
+        if (is_string($mode)) {
+            $mode = AnyDocOcrMode::tryFrom(strtolower(trim($mode)))
+                ?? throw InvalidProviderOptionsException::invalidValue($this->provider(), 'ocr', $mode, AnyDocOcrMode::values());
+        }
+
+        $this->options['ocr'] = $mode->value;
+
+        if ($mode === AnyDocOcrMode::Reject) {
+            unset($this->options['api_key'], $this->options['api_url']);
+        }
+
+        return $this;
+    }
+
+    public function withHostedOcr(?string $apiKey = null, ?string $apiUrl = null): self
+    {
+        $this->ocr(AnyDocOcrMode::Hosted);
+
+        foreach (['api_key' => $apiKey, 'api_url' => $apiUrl] as $key => $value) {
+            if ($value !== null) {
+                $this->options[$key] = $value;
+            }
+        }
+
+        return $this;
+    }
+
+    public function rejectOcr(): self
+    {
+        return $this->ocr(AnyDocOcrMode::Reject);
     }
 
     public function withBinary(string $path): self

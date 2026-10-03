@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use Shipfastlabs\Parsel\Enums\AnyDocOcrMode;
 use Shipfastlabs\Parsel\Enums\ImageMode;
+use Shipfastlabs\Parsel\Exceptions\InvalidProviderOptionsException;
 use Shipfastlabs\Parsel\Options\AnyDocOptions;
 use Shipfastlabs\Parsel\Options\LiteParseOptions;
 
@@ -48,3 +50,23 @@ it('builds anydoc options fluently', function (): void {
             'extra' => ['future' => 2],
         ]);
 });
+
+it('builds anydoc hosted ocr options', function (): void {
+    expect(AnyDocOptions::make()->withHostedOcr('fc-key', 'https://firecrawl.test')->toArray())->toBe([
+        'ocr' => 'hosted',
+        'api_key' => 'fc-key',
+        'api_url' => 'https://firecrawl.test',
+    ])->and(AnyDocOptions::make()->withHostedOcr()->toArray())->toBe(['ocr' => 'hosted'])
+        ->and(AnyDocOptions::make()->ocr(' Hosted ')->toArray())->toBe(['ocr' => 'hosted'])
+        ->and(AnyDocOptions::make()->ocr(AnyDocOcrMode::Reject)->toArray())->toBe(['ocr' => 'reject']);
+});
+
+it('drops hosted ocr credentials when switching anydoc back to reject', function (): void {
+    $options = AnyDocOptions::make()->withHostedOcr('fc-key', 'https://firecrawl.test')->rejectOcr();
+
+    expect($options->toArray())->toBe(['ocr' => 'reject']);
+});
+
+it('rejects unknown anydoc ocr modes', function (): void {
+    AnyDocOptions::make()->ocr('tesseract');
+})->throws(InvalidProviderOptionsException::class, "Invalid anydoc provider option [ocr]: 'tesseract'. Expected one of: reject, hosted.");
