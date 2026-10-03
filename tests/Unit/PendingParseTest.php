@@ -38,7 +38,7 @@ it('saves output according to the destination extension', function (): void {
     expect(Parsel::file(fixture('sample.pdf'))->save($base.'.txt'))->toBe($base.'.txt')
         ->and(Parsel::file(fixture('sample.pdf'))->save($base.'.md'))->toBe($base.'.md')
         ->and(Parsel::file(fixture('sample.pdf'))->save($base.'.json'))->toBe($base.'.json')
-        ->and(file_get_contents($base.'.json'))->toContain('textItems');
+        ->and(file_get_contents($base.'.json'))->toContain('text_items');
 
     unlink($base.'.txt');
     unlink($base.'.md');

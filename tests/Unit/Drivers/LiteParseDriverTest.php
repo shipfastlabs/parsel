@@ -117,6 +117,38 @@ it('ignores a malformed raw option bucket safely', function (): void {
     expect($fake->recordedCommands()[0])->toBe(['lit', 'parse', fixture('sample.pdf'), '--format', 'text', '-q', '--no-ocr']);
 });
 
+it('returns current lit text output with blank-line page separators intact', function (): void {
+    Parsel::fake(['--format text' => fixtureContents('liteparse-output.txt')]);
+
+    $text = Parsel::file(fixture('sample.pdf'))->text();
+
+    expect($text)->toStartWith('UNITED STATES')
+        ->and($text)->toContain("FORM 10-K\n\n    Indicate by check mark")
+        ->and($text)->toEndWith('for the past 90 days.')
+        ->and($text)->not->toContain('--- Page');
+});
+
+it('strips page markers from legacy lit text output', function (): void {
+    Parsel::fake(['--format text' => fixtureContents('liteparse-output-legacy.txt')]);
+    $legacy = Parsel::file(fixture('sample.pdf'))->text();
+
+    Parsel::fake(['--format text' => fixtureContents('liteparse-output.txt')]);
+
+    expect($legacy)->toBe(Parsel::file(fixture('sample.pdf'))->text());
+});
+
+it('preserves marker-like lines when the output does not use legacy page markers', function (): void {
+    Parsel::fake(['--format text' => "Intro\n--- Page 2 ---\nBody"]);
+
+    expect(Parsel::file(fixture('sample.pdf'))->text())->toBe("Intro\n--- Page 2 ---\nBody");
+});
+
+it('normalizes form feed page breaks into blank lines', function (): void {
+    Parsel::fake(['--format text' => "first page\n\fsecond page\fthird page\n"]);
+
+    expect(Parsel::file(fixture('sample.pdf'))->text())->toBe("first page\n\nsecond page\n\nthird page");
+});
+
 it('safely ignores malformed raw array entries', function (): void {
     $fake = new FakeProcessRunner(['--format text' => 'ok']);
 
