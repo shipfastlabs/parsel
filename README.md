@@ -57,6 +57,7 @@ vendor/bin/parsel-install --driver=liteparse --with-system-dependencies
 | Structured pages and coordinates | Yes | No |
 | Lazy pages | Yes | No |
 | Screenshots | Yes | No |
+| Complexity / OCR detection | Yes | No |
 | OCR | Yes | No |
 
 Parsel is tested against LiteParse 2.15.x and AnyDoc 0.2.x.
@@ -72,7 +73,7 @@ Parsel is tested against LiteParse 2.15.x and AnyDoc 0.2.x.
 | EPUB | No | Yes |
 | Images (`png`, `jpg`, `tiff`, `webp`, ...) | Yes, via OCR | No |
 
-AnyDoc accepts `doc`, `docx`, `odt`, `pdf`, `ppt`, `pptx`, `rtf`, `epub`, `xlsx`, `ods`, `odp`, and `csv`, plus extension aliases such as `xls`, `docm`, and `ppsx`. It rejects images (`anydoc sample.png` exits with "unsupported input") and does no local OCR: a scanned or image-only PDF fails with exit code 3, surfaced as a `ParseFailedException`.
+AnyDoc accepts `doc`, `docx`, `odt`, `pdf`, `ppt`, `pptx`, `rtf`, `epub`, `xlsx`, `ods`, `odp`, and `csv`, plus extension aliases such as `xls`, `docm`, and `ppsx`. It rejects images (`anydoc sample.png` exits with "unsupported input") and does no local OCR: a scanned or image-only PDF fails with exit code 3, surfaced as an `OcrRequiredException` (see [Handling failures](#handling-failures)).
 
 LiteParse needs LibreOffice for Office, OpenDocument, RTF, and CSV input. Install it with `vendor/bin/parsel-install --with-system-dependencies` (which also installs ImageMagick) or through your system package manager.
 
@@ -387,6 +388,32 @@ $files = Parsel::file('document.pdf')
 
 LiteParse writes one `page_<N>.png` file per rendered page. `screenshots()` renders into a private temporary directory, moves the produced files into the destination (replacing same-named files, as LiteParse itself does) and returns exactly those paths, sorted by page number. Other files already in the directory are left alone and not returned.
 
+## Complexity and OCR detection
+
+LiteParse can check whether a document needs OCR before you run an expensive parse. `complexity()` runs `lit is-complex` and returns per-page signals; `needsOcr()` is a shortcut for the overall verdict. Page selection, maximum pages, password, and binary options are reused; other parse options are ignored.
+
+```php
+if (Parsel::file('scan.pdf')->needsOcr()) {
+    $document = Parsel::file('scan.pdf')
+        ->withProviderOptions(LiteParseOptions::make()->withOcr())
+        ->parse();
+}
+
+$complexity = Parsel::file('report.pdf')
+    ->withProviderOptions(LiteParseOptions::make()->pageRange(1, 10))
+    ->complexity();
+
+$complexity->needsOcr();               // bool
+$complexity->pagesNeedingOcr();        // [1, 3]
+$complexity->pagesWithComplexLayout(); // pages with tables, columns, or dense graphics
+
+$page = $complexity->page(1);
+$page->reasons;          // ['sparse-text', 'embedded-images']
+$page->layout?->reasons; // ['table-likely']
+```
+
+Layout signals (`hasComplexLayout()`) are independent of the OCR verdict: they indicate that the text-only path may mangle reading order or structure.
+
 ## Binary resolution
 
 Each local driver resolves its executable in this order:
@@ -414,7 +441,7 @@ Parsel::extend('company-api', function (ParselManager $manager): Driver {
 $markdown = Parsel::driver('company-api')->file('report.pdf')->markdown();
 ```
 
-Drivers are resolved lazily and cached by the manager. Implement `TextDriver`, `StructuredDocumentDriver`, `LazyPageDriver`, or `ScreenshotDriver` to add those operations. A remote driver may use any HTTP client and does not need to depend on Parsel's CLI process infrastructure.
+Drivers are resolved lazily and cached by the manager. Implement `TextDriver`, `StructuredDocumentDriver`, `LazyPageDriver`, `ScreenshotDriver`, or `ComplexityDriver` to add those operations. A remote driver may use any HTTP client and does not need to depend on Parsel's CLI process infrastructure.
 
 ## Testing
 

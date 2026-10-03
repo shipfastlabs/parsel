@@ -21,8 +21,9 @@ final readonly class CliProcess
     /**
      * @param  callable(string): list<string>  $command
      * @param  array<int, class-string<ParseFailedException>>  $failures  Exception classes keyed by exit code.
+     * @param  (callable(ProcessResult): bool)|null  $accepts  Treats a non-zero exit as success when it returns true.
      */
-    public function run(Source $source, #[SensitiveParameter] callable $command, ?float $timeout, string $driver, array $failures = []): ProcessResult
+    public function run(Source $source, #[SensitiveParameter] callable $command, ?float $timeout, string $driver, array $failures = [], ?callable $accepts = null): ProcessResult
     {
         [$file, $temporary] = $this->resolveFile($source);
 
@@ -34,7 +35,7 @@ final readonly class CliProcess
             }
         }
 
-        return $this->ensureSuccessful($result, $driver, $failures);
+        return $this->ensureSuccessful($result, $driver, $failures, $accepts);
     }
 
     /**
@@ -48,14 +49,15 @@ final readonly class CliProcess
 
     /**
      * @param  array<int, class-string<ParseFailedException>>  $failures
+     * @param  (callable(ProcessResult): bool)|null  $accepts
      */
-    private function ensureSuccessful(#[SensitiveParameter] ProcessResult $result, string $driver, array $failures): ProcessResult
+    private function ensureSuccessful(#[SensitiveParameter] ProcessResult $result, string $driver, array $failures, ?callable $accepts = null): ProcessResult
     {
         if ($result->timedOut()) {
             throw ParseTimedOutException::fromResult($result, $driver);
         }
 
-        if (! $result->successful()) {
+        if (! $result->successful() && ($accepts === null || ! $accepts($result))) {
             $exception = $failures[$result->exitCode] ?? ParseFailedException::class;
 
             throw $exception::fromResult($result, $driver);

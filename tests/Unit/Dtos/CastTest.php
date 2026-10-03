@@ -29,3 +29,14 @@ it('casts nullable floats and strings', function (): void {
         ->and(Cast::nullableStr('a'))->toBe('a')
         ->and(Cast::nullableStr(1))->toBeNull();
 });
+
+it('casts only true to a true boolean', function (): void {
+    expect(Cast::bool(true))->toBeTrue()
+        ->and(Cast::bool(1))->toBeFalse()
+        ->and(Cast::bool('true'))->toBeFalse();
+});
+
+it('keeps only string entries of a list', function (): void {
+    expect(Cast::strings(['a', 1, 'b', null]))->toBe(['a', 'b'])
+        ->and(Cast::strings('a'))->toBe([]);
+});
