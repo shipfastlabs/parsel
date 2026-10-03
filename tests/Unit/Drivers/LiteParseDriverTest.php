@@ -517,3 +517,20 @@ it('treats the is-complex exit code 1 as a report when pages need OCR', function
     expect(fakeParse($fake)->needsOcr())->toBeTrue()
         ->and(fakeParse(new FakeProcessRunner(['is-complex' => '[{"pageNumber":1,"needsOcr":false,"reasons":[]}]']))->needsOcr())->toBeFalse();
 });
+
+it('propagates is-complex failures', function (int $exitCode, string $stdout): void {
+    $failed = new FakeProcessRunner(['is-complex' => new ProcessResult($exitCode, $stdout, 'Error: PDF error: file not found', ['lit'])]);
+
+    expect(fn (): DocumentComplexity => fakeParse($failed)->complexity())->toThrow(ParseFailedException::class, 'file not found');
+})->with([
+    'error exit without report' => [1, ''],
+    'unexpected exit code' => [2, '[]'],
+]);
+
+it('rejects invalid complexity output', function (string $json): void {
+    fakeParse(new FakeProcessRunner(['is-complex' => $json]))->complexity();
+})->throws(InvalidOutputException::class)->with([
+    'empty output' => [''],
+    'malformed JSON' => ['[bad'],
+    'non-list JSON' => ['{"pageNumber":1}'],
+]);
