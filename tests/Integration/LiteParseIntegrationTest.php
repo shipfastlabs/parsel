@@ -6,6 +6,7 @@ use Shipfastlabs\Parsel;
 use Shipfastlabs\Parsel\Data\Document;
 use Shipfastlabs\Parsel\Data\Page;
 use Shipfastlabs\Parsel\Enums\ImageMode;
+use Shipfastlabs\Parsel\Exceptions\ParseFailedException;
 use Shipfastlabs\Parsel\Options\LiteParseOptions;
 use Symfony\Component\Process\Process;
 
@@ -243,4 +244,48 @@ it('converts office documents through LibreOffice', function (): void {
         ->text();
 
     expect($text)->not->toBeEmpty();
+})->group('integration');
+
+it('reads Tesseract language data from the configured tessdata path', function (): void {
+    $directory = integrationDirectory();
+    file_put_contents($directory.'/eng.traineddata', 'not a real model');
+
+    try {
+        Parsel::file(__DIR__.'/../../examples/docs/sample.png')
+            ->withProviderOptions(LiteParseOptions::make()->withOcr(language: 'eng', tessdataPath: $directory, workers: 1))
+            ->text();
+
+        $this->fail('LiteParse accepted an invalid tessdata model');
+    } catch (ParseFailedException $parseFailedException) {
+        expect($parseFailedException->getMessage())
+            ->not->toContain('--tessdata-path')
+            ->toContain($directory.'/eng.traineddata');
+    } finally {
+        removeIntegrationDirectory($directory);
+    }
+})->group('integration');
+
+it('runs built-in OCR with language data from a local tessdata path', function (): void {
+    requireExtendedIntegration($this, 'needs network access to download a Tesseract language model');
+
+    $directory = integrationDirectory();
+    $model = @file_get_contents('https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng@1.0.0/4.0.0_best_int/eng.traineddata.gz');
+    $model = $model === false ? false : gzdecode($model);
+
+    if ($model === false) {
+        removeIntegrationDirectory($directory);
+        $this->fail('Could not download the eng Tesseract language model');
+    }
+
+    file_put_contents($directory.'/eng.traineddata', $model);
+
+    try {
+        $text = Parsel::file(__DIR__.'/../../examples/docs/sample.png')
+            ->withProviderOptions(LiteParseOptions::make()->withOcr(language: 'eng', tessdataPath: $directory, workers: 1))
+            ->text();
+
+        expect($text)->toContain('Shipfastlabs');
+    } finally {
+        removeIntegrationDirectory($directory);
+    }
 })->group('integration');
