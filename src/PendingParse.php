@@ -48,10 +48,12 @@ final class PendingParse
             $options['pages'] = $this->providerOptions['pages'].','.$options['pages'];
         }
 
-        if (isset($this->providerOptions['extra'], $options['extra'])
-            && is_array($this->providerOptions['extra'])
-            && is_array($options['extra'])) {
-            $options['extra'] = array_replace($this->providerOptions['extra'], $options['extra']);
+        foreach (['extra', 'screenshot_extra'] as $key) {
+            if (isset($this->providerOptions[$key], $options[$key])
+                && is_array($this->providerOptions[$key])
+                && is_array($options[$key])) {
+                $options[$key] = array_replace($this->providerOptions[$key], $options[$key]);
+            }
         }
 
         $this->providerOptions = array_replace($this->providerOptions, $options);
