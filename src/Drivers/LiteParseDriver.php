@@ -114,7 +114,7 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
         try {
             $this->process->run(
                 $request->source,
-                fn (string $file): array => $this->parseArgv($binary, $file, OutputFormat::Json, $options, $output),
+                fn (string $file): array => $this->parseArgv($binary, $file, OutputFormat::Json, $options, $output, $config),
                 $request->timeout,
                 $this->name(),
             );
