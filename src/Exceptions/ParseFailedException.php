@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Shipfastlabs\Parsel\Exceptions;
 
+use SensitiveParameter;
+use Shipfastlabs\Parsel\Support\CommandRedactor;
 use Shipfastlabs\Parsel\Support\ProcessResult;
 
 final class ParseFailedException extends ParselException
 {
     /**
-     * @param  list<string>  $command
+     * @param  list<string>  $command  The argv that was run, with secret flag values (e.g. `--password`) masked.
      */
     private function __construct(
         string $message,
@@ -20,7 +22,7 @@ final class ParseFailedException extends ParselException
         parent::__construct($message);
     }
 
-    public static function fromResult(ProcessResult $result, string $driver = 'parser'): self
+    public static function fromResult(#[SensitiveParameter] ProcessResult $result, string $driver = 'parser'): self
     {
         $detail = $result->stderr === '' ? '(no error output)' : $result->stderr;
 
@@ -28,7 +30,7 @@ final class ParseFailedException extends ParselException
             sprintf('%s exited with code %d: %s', $driver, $result->exitCode, $detail),
             $result->exitCode,
             $result->stderr,
-            $result->command,
+            CommandRedactor::redact($result->command),
         );
     }
 }

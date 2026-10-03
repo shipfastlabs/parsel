@@ -150,6 +150,18 @@ it('preserves process failure details', function (): void {
     expect(fn (): string => fakeParse($failed)->text())->toThrow(ParseFailedException::class, 'boom');
 });
 
+it('does not expose the document password on a process failure', function (): void {
+    $pending = new ParselManager(process: new FakeJsonOutputRunner('', 1), binaries: ['liteparse' => 'lit'])
+        ->file(fixture('sample.pdf'))
+        ->withProviderOptions(LiteParseOptions::make()->withPassword('hunter2'));
+
+    expect(fn (): string => $pending->text())->toThrow(function (ParseFailedException $exception): void {
+        expect($exception->command)->toContain('--password')->toContain('********')->not->toContain('hunter2')
+            ->and($exception->getMessage())->not->toContain('hunter2')
+            ->and(print_r(array_slice($exception->getTrace(), 0, 2), true))->not->toContain('hunter2');
+    });
+});
+
 it('validates sources before starting a process', function (): void {
     $unused = new FakeProcessRunner;
 

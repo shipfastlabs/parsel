@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Shipfastlabs\Parsel\Support;
 
+use SensitiveParameter;
 use Shipfastlabs\Parsel\Contracts\Filesystem;
 use Shipfastlabs\Parsel\Contracts\ProcessRunner;
 use Shipfastlabs\Parsel\Exceptions\ParseFailedException;
@@ -19,7 +20,7 @@ final readonly class CliProcess
     /**
      * @param  callable(string): list<string>  $command
      */
-    public function run(Source $source, callable $command, ?float $timeout, string $driver): ProcessResult
+    public function run(Source $source, #[SensitiveParameter] callable $command, ?float $timeout, string $driver): ProcessResult
     {
         [$file, $temporary] = $this->resolveFile($source);
 
