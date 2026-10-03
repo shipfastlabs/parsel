@@ -10,27 +10,47 @@
     <a href="https://packagist.org/packages/shipfastlabs/parsel"><img alt="License" src="https://img.shields.io/packagist/l/shipfastlabs/parsel"></a>
 </p>
 
-Parsel provides one expressive PHP API for document parsing, backed by interchangeable drivers. Version 1.0 includes local [LiteParse](https://github.com/run-llama/liteparse) and [AnyDoc](https://github.com/firecrawl/anydoc) drivers and public contracts for custom or future hosted providers.
+- [Introduction](#introduction)
+- [Installation](#installation)
+- [Basic Usage](#basic-usage)
+    - [Sources](#sources)
+    - [Output](#output)
+    - [Timeouts](#timeouts)
+- [Drivers](#drivers)
+    - [Selecting a Driver](#selecting-a-driver)
+    - [Capabilities](#capabilities)
+    - [Supported Formats](#supported-formats)
+    - [Binary Resolution](#binary-resolution)
+- [Provider Options](#provider-options)
+    - [LiteParse Options](#liteparse-options)
+    - [AnyDoc Options](#anydoc-options)
+    - [Array Options](#array-options)
+- [Handling Errors](#handling-errors)
+- [Custom Drivers](#custom-drivers)
+- [Testing](#testing)
+- [Upgrading](#upgrading)
+- [Contributing](#contributing)
+- [Credits and License](#credits-and-license)
+
+## Introduction
+
+Parsel provides an expressive PHP API for extracting Markdown, text, and structured data from documents. It ships with drivers for the local [LiteParse](https://github.com/run-llama/liteparse) and [AnyDoc](https://github.com/firecrawl/anydoc) command-line parsers, and you may register your own.
 
 ```php
 use Shipfastlabs\Parsel;
 
-$markdown = Parsel::file('report.pdf')->markdown(); // LiteParse by default
-
-$markdown = Parsel::driver('anydoc')
-    ->file('report.docx')
-    ->markdown();
+$markdown = Parsel::file('report.pdf')->markdown();
 ```
 
-Parsel requires PHP 8.4 or greater.
-
 ## Installation
+
+Parsel requires PHP 8.4 or greater. You may install it via Composer:
 
 ```bash
 composer require shipfastlabs/parsel
 ```
 
-Install only the parser you use. With no `--driver`, the installer installs LiteParse:
+Next, install the parser binary for the driver you plan to use. By default, the installer installs LiteParse:
 
 ```bash
 vendor/bin/parsel-install
@@ -38,164 +58,152 @@ vendor/bin/parsel-install --driver=anydoc
 vendor/bin/parsel-install --driver=all
 ```
 
-LiteParse supports npm, pnpm, bun, pip, and cargo. AnyDoc supports npm, pnpm, and bun and requires Node.js 20 or newer.
+You may choose a package manager with `--manager`. LiteParse supports `npm`, `pnpm`, `bun`, `pip`, and `cargo`; AnyDoc supports `npm`, `pnpm`, and `bun` and requires Node.js 20 or greater. LiteParse needs LibreOffice to convert Office, OpenDocument, RTF, and CSV files, which `--with-system-dependencies` installs along with ImageMagick:
 
 ```bash
-vendor/bin/parsel-install --driver=liteparse --manager=cargo
-vendor/bin/parsel-install --driver=anydoc --manager=npm
-vendor/bin/parsel-install --driver=liteparse --with-system-dependencies
+vendor/bin/parsel-install --driver=anydoc --manager=pnpm
+vendor/bin/parsel-install --with-system-dependencies
 ```
 
-`vendor/bin/parsel-install-lit` remains as a compatibility alias.
+## Basic Usage
 
-## Drivers and capabilities
+### Sources
 
-| Capability | LiteParse | AnyDoc |
-| --- | --- | --- |
-| Markdown | Yes | Yes |
-| Plain text | Yes | No |
-| Structured pages and coordinates | Yes | No |
-| Lazy pages | Yes | No |
-| Screenshots | Yes | No |
-| OCR | Yes | No |
-
-Parsel is tested against LiteParse 2.15.x and AnyDoc 0.2.x.
-
-### Supported formats
-
-| Input | LiteParse | AnyDoc |
-| --- | --- | --- |
-| PDF | Yes, natively | Yes (text layer only, see below) |
-| Word, PowerPoint, Excel (`doc`, `docx`, `ppt`, `pptx`, `xls`, `xlsx`, ...) | Yes, via LibreOffice conversion | Yes, natively |
-| OpenDocument (`odt`, `ods`, `odp`) | Yes, via LibreOffice conversion | Yes, natively |
-| RTF, CSV | Yes, via LibreOffice conversion | Yes, natively |
-| EPUB | No | Yes |
-| Images (`png`, `jpg`, `tiff`, `webp`, ...) | Yes, via OCR | No |
-
-AnyDoc accepts `doc`, `docx`, `odt`, `pdf`, `ppt`, `pptx`, `rtf`, `epub`, `xlsx`, `ods`, `odp`, and `csv`, plus extension aliases such as `xls`, `docm`, and `ppsx`. It rejects images (`anydoc sample.png` exits with "unsupported input") and does no local OCR: a scanned or image-only PDF fails with exit code 3, surfaced as an `OcrRequiredException` (see [Handling failures](#handling-failures)).
-
-LiteParse needs LibreOffice for Office, OpenDocument, RTF, and CSV input. Install it with `vendor/bin/parsel-install --with-system-dependencies` (which also installs ImageMagick) or through your system package manager.
-
-Calling an unavailable operation throws `UnsupportedCapabilityException` before the provider is executed. Parsel does not derive fake structured data or plain text from AnyDoc Markdown.
-
-LiteParse remains the default driver, so existing basic calls continue to work:
+You may parse a document from a path or from raw bytes:
 
 ```php
-$text = Parsel::file('invoice.pdf')->text();
-$document = Parsel::file('invoice.pdf')->parse();
-$array = Parsel::file('invoice.pdf')->toArray();
+use Shipfastlabs\Parsel;
+
+$markdown = Parsel::file('/path/to/report.pdf')->markdown();
+
+$markdown = Parsel::bytes($contents, 'pdf')->markdown();
 ```
 
-Select AnyDoc explicitly or change the process-wide default:
+> [!NOTE]
+> Byte sources always require a file extension so the parser can identify the format.
+
+### Output
+
+Every driver can return Markdown. LiteParse can also return plain text, a structured `Document`, or an array:
 
 ```php
-Parsel::driver('anydoc')->file('book.epub')->markdown();
+$markdown = Parsel::file('report.pdf')->markdown();
+$text = Parsel::file('report.pdf')->text();
+$array = Parsel::file('report.pdf')->toArray();
+
+$document = Parsel::file('report.pdf')->parse();
+
+echo $document->pageCount();
+
+foreach ($document->pages as $page) {
+    foreach ($page->items as $item) {
+        echo "{$item->text} @ ({$item->x}, {$item->y})";
+    }
+}
+```
+
+For large documents, the `lazyPages` method streams pages one at a time:
+
+```php
+foreach (Parsel::file('large.pdf')->lazyPages() as $page) {
+    echo $page->text;
+}
+```
+
+The `screenshots` method renders each page to a PNG in an existing directory and returns the file paths:
+
+```php
+$paths = Parsel::file('report.pdf')->screenshots('/path/to/screenshots');
+```
+
+The `save` method writes the output to disk, choosing the format from the extension: `.md` and `.markdown` save Markdown, `.json` saves structured JSON, and any other extension saves plain text:
+
+```php
+Parsel::file('report.pdf')->save('report.md');
+Parsel::file('report.pdf')->save('report.json');
+```
+
+### Timeouts
+
+Parsing times out after 60 seconds by default. You may change the timeout for a single parse, or for every parse, in seconds. Passing `null` disables it:
+
+```php
+Parsel::file('report.pdf')->withTimeout(120)->markdown();
+
+Parsel::defaultTimeout(300);
+```
+
+## Drivers
+
+### Selecting a Driver
+
+LiteParse is the default driver. You may select another driver per parse, or change the default:
+
+```php
+$markdown = Parsel::driver('anydoc')->file('report.docx')->markdown();
 
 Parsel::defaultDriver('anydoc');
-Parsel::file('book.epub')->markdown();
 ```
 
-For dependency injection and long-running applications, use an instance:
+If you prefer dependency injection over the static facade, you may use a `ParselManager` instance:
 
 ```php
 use Shipfastlabs\Parsel\ParselManager;
 
 $parsel = new ParselManager;
+
 $markdown = $parsel->driver('anydoc')->file('report.docx')->markdown();
 ```
 
-## Sources and common options
+### Capabilities
 
-Both drivers accept paths and raw bytes. Byte sources require an extension so signature-less formats such as CSV can be identified reliably.
+| Capability | LiteParse | AnyDoc |
+| --- | --- | --- |
+| Markdown | Yes | Yes |
+| Plain text | Yes | No |
+| Structured documents and JSON | Yes | No |
+| Lazy pages | Yes | No |
+| Screenshots | Yes | No |
+| Local OCR | Yes | No |
 
-```php
-$markdown = Parsel::file('/path/to/report.pdf')->markdown();
-$markdown = Parsel::bytes($uploadedBytes, 'pdf')->markdown();
+Calling an unsupported method throws an `UnsupportedCapabilityException` before the parser runs.
 
-$markdown = Parsel::driver('anydoc')
-    ->bytes($csvBytes, 'csv')
-    ->markdown();
-```
+### Supported Formats
 
-AnyDoc streams byte sources to `anydoc -` over stdin instead of writing a temporary file when the extension is one anydoc recognizes (`pdf`, `doc`, `docx`, `docm`, `odt`, `rtf`, `epub`, `ppt`, `pps`, `pot`, `pptx`, `pptm`, `ppsx`, `ppsm`, `odp`, `xls`, `xlsx`, `xlsm`, `xlsb`, `ods`, `csv`) or when you set an explicit format. anydoc detects the format from the content, as it does for files. Signature-less CSV gets `--format csv` automatically. Bytes with any other extension and no explicit format still go through a temporary file. LiteParse always uses a temporary file for byte sources.
+| Input | LiteParse | AnyDoc |
+| --- | --- | --- |
+| PDF | Yes | Yes |
+| Word, Excel, PowerPoint | Via LibreOffice | Yes |
+| OpenDocument, RTF, CSV | Via LibreOffice | Yes |
+| EPUB | No | Yes |
+| Images | Via OCR | No |
 
-Timeout is portable across drivers:
+### Binary Resolution
 
-```php
-Parsel::file('report.pdf')->withTimeout(120)->markdown();
-```
+Each driver locates its executable in the following order:
 
-When the parser exceeds the timeout, its process is stopped, any temporary file created for a byte source is removed, and a `ParseTimedOutException` is thrown. Like every Parsel error it extends `ParselException`, and it exposes the exceeded `timeout` (seconds), the `driver` name, and the `command` that was run. A parser that exits with a non-zero code throws `ParseFailedException` instead.
+1. The `binary` provider option, set via `withBinary()`.
+2. The `PARSEL_LITEPARSE_BINARY` or `PARSEL_ANYDOC_BINARY` environment variable.
+3. `lit` or `anydoc` on your `PATH`.
 
-```php
-use Shipfastlabs\Parsel\Exceptions\ParseTimedOutException;
+## Provider Options
 
-try {
-    $markdown = Parsel::file('report.pdf')->withTimeout(30)->markdown();
-} catch (ParseTimedOutException $e) {
-    report("{$e->driver} gave up after {$e->timeout}s");
-}
-```
+Driver-specific settings are passed to `withProviderOptions` using a typed options object or an array.
 
-`save()` selects the corresponding capability from the extension. Both drivers support `.md` and `.markdown`; LiteParse additionally supports `.txt` and `.json`.
-
-```php
-Parsel::driver('anydoc')->file('report.docx')->save('report.md');
-Parsel::file('report.pdf')->save('report.json');
-```
-
-## Provider options
-
-Provider-specific behavior belongs in `withProviderOptions()`. It accepts a typed fluent object or a strict associative array.
-
-```php
-use Shipfastlabs\Parsel\Options\LiteParseOptions;
-
-$options = LiteParseOptions::make()
-    ->pageRange(1, 5)
-    ->page(10)
-    ->withOcr(language: 'eng', workers: 8)
-    ->withDpi(300)
-    ->preserveSmallText();
-
-$document = Parsel::file('invoice.pdf')
-    ->withProviderOptions($options)
-    ->parse();
-```
-
-### OCR is off unless you enable it
-
-The `lit` CLI runs OCR by default, but Parsel always passes `--no-ocr` unless you opt in with `ocr()`, `withOcr()`, or the `'ocr' => true` array option. Scanned PDFs and images therefore return empty text until OCR is enabled:
-
-```php
-$text = Parsel::file('scanned.pdf')->text(); // empty: no text layer and OCR is disabled
-
-$text = Parsel::file('scanned.pdf')
-    ->withProviderOptions(LiteParseOptions::make()->withOcr())
-    ->text();
-
-$text = Parsel::file('receipt.png')
-    ->withProviderOptions(['ocr' => true, 'ocr_language' => 'eng'])
-    ->text();
-```
-
-LiteParse's built-in Tesseract OCR downloads language data from GitHub on first use, so the first OCR run needs network access. Use `withOcr(serverUrl: ...)` to send pages to an HTTP OCR server instead.
-
-LiteParse options include page selection, maximum pages, OCR settings (including OCR server headers), page-error recovery, config files, DPI, small-text preservation, passwords, Markdown images and links, headers and footers, JSON enrichments, and a binary override.
-
-To OCR with local Tesseract language data instead of letting LiteParse download it, point `tessdataPath` at a directory containing `<language>.traineddata` files. LiteParse no longer has a `--tessdata-path` flag, so Parsel passes this through a temporary `--config` file that is removed after the parse. LiteParse reads only one config file, so when you also use `withConfig()`, Parsel copies your settings into that temporary file together with `tessdataPath`.
-
-```php
-LiteParseOptions::make()->withOcr(language: 'eng', tessdataPath: '/usr/share/tessdata');
-```
+### LiteParse Options
 
 ```php
 use Shipfastlabs\Parsel\Enums\ImageMode;
+use Shipfastlabs\Parsel\Options\LiteParseOptions;
 
-$markdown = Parsel::file('report.pdf')
+$markdown = Parsel::file('invoice.pdf')
     ->withProviderOptions(
         LiteParseOptions::make()
-            ->withoutOcr()
+            ->pageRange(1, 5)
+            ->page(10)
+            ->maxPages(20)
+            ->withDpi(300)
+            ->withPassword($password)
             ->withImages(ImageMode::Embed, '/path/to/images')
             ->withoutLinks()
             ->keepHeadersAndFooters()
@@ -203,90 +211,96 @@ $markdown = Parsel::file('report.pdf')
     ->markdown();
 ```
 
-Remote OCR servers can receive extra request headers (sent only when OCR is enabled), damaged pages can be skipped instead of failing the whole parse, and a LiteParse JSON config file can be loaded. Options set through Parsel are passed as CLI flags, so they take precedence over the config file.
+#### OCR
+
+You may enable OCR with `withOcr()`, optionally choosing a language, worker count, local Tesseract data directory, or an HTTP OCR server:
 
 ```php
-$document = Parsel::file('scan.pdf')
-    ->withProviderOptions(
-        LiteParseOptions::make()
-            ->withOcr(serverUrl: 'https://ocr.example.com', headers: ['Authorization' => 'Bearer '.$token])
-            ->withOcrServerHeader('X-Tenant', 'acme')
-            ->continueOnPageError()
-            ->withConfig('/path/to/liteparse.json')
-    )
-    ->parse();
+LiteParseOptions::make()->withOcr(language: 'eng', workers: 4);
 
-// Equivalent strict array keys
-$options = [
-    'ocr' => true,
-    'ocr_server_url' => 'https://ocr.example.com',
-    'ocr_server_headers' => ['Authorization' => 'Bearer '.$token],
-    'continue_on_page_error' => true,
-    'config' => '/path/to/liteparse.json',
-];
+LiteParseOptions::make()->withOcr(tessdataPath: '/usr/share/tessdata');
+
+LiteParseOptions::make()
+    ->withOcr(serverUrl: 'https://ocr.example.com', headers: ['Authorization' => "Bearer {$token}"])
+    ->withOcrServerHeader('X-Tenant', 'acme');
 ```
 
-AnyDoc supports explicit input format and binary overrides:
+> [!NOTE]
+> OCR is disabled unless you enable it, so scanned PDFs and images return empty text by default.
+
+#### Structured Output
+
+You may ask LiteParse to enrich structured output with `extractBlocks`, `extractAnnotations`, `extractFormFields`, `extractStructureTree`, `extractContentBounds`, `extractVectorGraphics`, `extractTextMetadata`, `extractImages`, `extractXfaPackets`, and `withComplexity`, or enable all of them with `extractAll`. These options apply to `parse`, `toArray`, `lazyPages`, and `.json` saves:
+
+```php
+LiteParseOptions::make()->extractBlocks()->extractFormFields();
+```
+
+#### Other Options
+
+You may skip damaged pages, load a LiteParse config file, or pass any CLI flag that Parsel does not cover yet. The `option` method applies to parsing, while `screenshotOption` applies to screenshots:
+
+```php
+LiteParseOptions::make()
+    ->continueOnPageError()
+    ->withConfig('/path/to/liteparse.json')
+    ->option('new-flag', 42)
+    ->screenshotOption('new-screenshot-flag');
+```
+
+### AnyDoc Options
+
+You may set the input format explicitly or pass any CLI flag via `option`:
 
 ```php
 use Shipfastlabs\Parsel\Options\AnyDocOptions;
 
 $markdown = Parsel::driver('anydoc')
     ->file('data.csv')
-    ->withProviderOptions(
-        AnyDocOptions::make()->format('csv')
-    )
+    ->withProviderOptions(AnyDocOptions::make()->format('csv'))
     ->markdown();
 ```
 
-AnyDoc does not run OCR itself. By default (`--ocr reject`) a PDF whose pages are scanned or image-only fails with a `ParseFailedException`. AnyDoc 0.2.4+ can instead send those PDFs to [Firecrawl Parse](https://www.firecrawl.dev):
+AnyDoc does not run OCR locally. You may send scanned PDFs to [Firecrawl](https://www.firecrawl.dev) for hosted OCR instead. When no API key or URL is given, AnyDoc reads `FIRECRAWL_API_KEY` and `FIRECRAWL_API_URL`:
 
 ```php
-use Shipfastlabs\Parsel\Enums\AnyDocOcrMode;
-
 $markdown = Parsel::driver('anydoc')
     ->file('scan.pdf')
-    ->withProviderOptions(
-        AnyDocOptions::make()->withHostedOcr() // or ->withHostedOcr($apiKey, 'https://firecrawl.example.com')
-    )
+    ->withProviderOptions(AnyDocOptions::make()->withHostedOcr())
     ->markdown();
-
-AnyDocOptions::make()->ocr(AnyDocOcrMode::Hosted); // or ->ocr('hosted')
-AnyDocOptions::make()->rejectOcr();                // explicit default
 ```
 
-The equivalent array keys are `ocr` (`reject` or `hosted`), `api_key`, and `api_url`. Without an explicit key AnyDoc reads `FIRECRAWL_API_KEY` (else runs keyless), and without a URL it reads `FIRECRAWL_API_URL` (else `https://api.firecrawl.dev`). Prefer the environment variable for the key: an explicit `api_key` is passed as a command-line argument, which other users on the same machine may be able to see in the process list.
+> [!WARNING]
+> Hosted OCR uploads the entire document to Firecrawl or the server at `api_url`. Only enable it for documents you are allowed to share with that service.
 
-> **Privacy:** hosted OCR uploads the whole document to Firecrawl (or the server at `api_url`) for processing. Only enable it for documents you are allowed to share with that service. Documents that do not need OCR are still converted locally.
+### Array Options
 
-Array keys are validated, so typos fail early. For a newly released upstream CLI flag, use the explicit escape hatch:
+Every option has a snake_case array key. Keys are validated, so typos throw an `InvalidProviderOptionsException`:
 
 ```php
-$options = LiteParseOptions::make()->option('new-upstream-flag', 42);
-$options = AnyDocOptions::make()->option('new-upstream-flag');
+Parsel::file('receipt.png')
+    ->withProviderOptions(['ocr' => true, 'ocr_language' => 'eng'])
+    ->text();
 ```
 
-LiteParse `option()` flags are passed to `lit parse` only (used by `markdown()`, `text()`, `parse()`, `toArray()`, `save()`, and `lazyPages()`), because most parse flags are rejected by `lit screenshot`. Use `screenshotOption()` for a flag that should be passed to `lit screenshot` instead:
+## Handling Errors
+
+All exceptions extend `Shipfastlabs\Parsel\Exceptions\ParselException`. When a parser exits with an error, Parsel throws a `ParseFailedException` exposing `exitCode`, `stderr`, and `command`. When it exceeds the timeout, Parsel throws a `ParseTimedOutException` exposing `timeout`, `driver`, and `command`:
 
 ```php
-$options = LiteParseOptions::make()
-    ->option('extract-blocks')                     // lit parse only
-    ->screenshotOption('new-screenshot-flag', 2);  // lit screenshot only
+use Shipfastlabs\Parsel\Exceptions\ParseFailedException;
+use Shipfastlabs\Parsel\Exceptions\ParseTimedOutException;
+
+try {
+    $markdown = Parsel::file('report.pdf')->markdown();
+} catch (ParseTimedOutException $e) {
+    report("{$e->driver} timed out after {$e->timeout}s");
+} catch (ParseFailedException $e) {
+    report($e->stderr);
+}
 ```
 
-As an array, these are the `extra` and `screenshot_extra` keys.
-
-When the CLI exits with a non-zero code, Parsel throws `ParseFailedException` with the `exitCode`, `stderr`, and the `command` that was run. Values of secret flags (`--password`, `--api-key`, `--ocr-server-header`, including the `--flag=value` form) are replaced with `********` in `command`, so the exception is safe to log or report.
-
-## Handling failures
-
-Every provider process that exits with a non-zero code throws `ParseFailedException`, which exposes `exitCode`, `stderr`, and `command`. The AnyDoc driver maps its documented exit codes to more specific subclasses, so existing `catch (ParseFailedException)` blocks keep working:
-
-| AnyDoc exit code | Exception |
-| --- | --- |
-| 1, document could not be read or converted | `ParseFailedException` |
-| 2, usage error such as an unknown option or invalid `--format` | `ParserUsageException` |
-| 3, PDF pages need OCR | `OcrRequiredException` |
+The AnyDoc driver throws more specific subclasses of `ParseFailedException`: a `ParserUsageException` for invalid arguments, and an `OcrRequiredException` when a PDF needs OCR:
 
 ```php
 use Shipfastlabs\Parsel\Exceptions\OcrRequiredException;
@@ -295,105 +309,30 @@ use Shipfastlabs\Parsel\Options\LiteParseOptions;
 try {
     $markdown = Parsel::driver('anydoc')->file('scan.pdf')->markdown();
 } catch (OcrRequiredException) {
-    $markdown = Parsel::driver('liteparse')
-        ->file('scan.pdf')
+    $markdown = Parsel::file('scan.pdf')
         ->withProviderOptions(LiteParseOptions::make()->withOcr())
         ->markdown();
 }
 ```
 
-Alternatively, `AnyDocOptions::make()->withHostedOcr()` makes AnyDoc send the document to Firecrawl Parse for hosted OCR. LiteParse failures always throw `ParseFailedException`.
+Secrets such as passwords, API keys, and OCR server headers are redacted from the exception's `command`, so it is safe to log.
 
-## Structured LiteParse output
+## Custom Drivers
 
-```php
-$document = Parsel::file('document.pdf')->parse();
-
-echo $document->text;
-echo $document->pageCount();
-
-foreach ($document->pages as $page) {
-    foreach ($page->items as $item) {
-        echo "{$item->text} @ ({$item->x}, {$item->y})\n";
-    }
-}
-```
-
-Stream large documents without decoding the complete page array:
+You may register your own driver with the `extend` method. A driver implements the `Driver` contract, which provides Markdown, and may implement `TextDriver`, `StructuredDocumentDriver`, `LazyPageDriver`, or `ScreenshotDriver` for additional capabilities:
 
 ```php
-foreach (Parsel::file('large.pdf')->lazyPages() as $page) {
-    echo $page->text;
-}
-```
-
-LiteParse can enrich its JSON output with extra data. These options only apply to structured output (`parse()`, `toArray()`, `lazyPages()`, and `save('*.json')`); they are not sent for `text()` or `markdown()`:
-
-```php
-$document = Parsel::file('form.pdf')
-    ->withProviderOptions(
-        LiteParseOptions::make()
-            ->extractBlocks()          // classified layout blocks with bounding boxes
-            ->extractAnnotations()     // all PDF annotations
-            ->extractFormFields()      // AcroForm widget fields and values
-            ->extractStructureTree()   // tagged-PDF logical structure tree
-            ->extractContentBounds()   // per-page content bounds
-            ->extractVectorGraphics()  // vector shapes and merged lines
-            ->extractTextMetadata()    // rich text metadata on text items
-            ->extractImages()          // embedded image bytes and metadata
-            ->extractXfaPackets()      // raw XFA packets
-            ->withComplexity()         // per-page complexity signals
-    )
-    ->parse();
-
-// Or enable everything at once:
-LiteParseOptions::make()->extractAll();
-```
-
-The equivalent array keys are `extract_blocks`, `extract_annotations`, `extract_form_fields`, `extract_structure_tree`, `extract_content_bounds`, `extract_vector_graphics`, `extract_text_metadata`, `extract_images`, `extract_xfa_packets`, and `complexity`. Document-level results such as `images`, `form_type`, and `xfa_packets` appear in `$document->metadata`; the complete enriched payload is available with `save('output.json')`.
-
-Screenshots require an existing destination directory:
-
-```php
-$files = Parsel::file('document.pdf')
-    ->withProviderOptions(LiteParseOptions::make()->pageRange(1, 5)->withDpi(200))
-    ->screenshots('/path/to/screenshots');
-```
-
-LiteParse writes one `page_<N>.png` file per rendered page. `screenshots()` renders into a private temporary directory, moves the produced files into the destination (replacing same-named files, as LiteParse itself does) and returns exactly those paths, sorted by page number. Other files already in the directory are left alone and not returned.
-
-## Binary resolution
-
-Each local driver resolves its executable in this order:
-
-1. The typed or array provider option `binary`.
-2. `PARSEL_LITEPARSE_BINARY` or `PARSEL_ANYDOC_BINARY`.
-3. `lit` or `anydoc` on `PATH`.
-
-`PARSEL_LIT_BINARY` remains a fallback for LiteParse during the 1.0 migration.
-
-## Custom drivers
-
-Implement the minimal `Driver` contract for Markdown, then opt into additional capability contracts only when the provider supports them.
-
-```php
-use Shipfastlabs\Parsel;
 use Shipfastlabs\Parsel\Contracts\Driver;
-use Shipfastlabs\Parsel\ParseRequest;
 use Shipfastlabs\Parsel\ParselManager;
 
-Parsel::extend('company-api', function (ParselManager $manager): Driver {
-    return new CompanyApiDriver;
-});
+Parsel::extend('company-api', fn (ParselManager $manager): Driver => new CompanyApiDriver);
 
 $markdown = Parsel::driver('company-api')->file('report.pdf')->markdown();
 ```
 
-Drivers are resolved lazily and cached by the manager. Implement `TextDriver`, `StructuredDocumentDriver`, `LazyPageDriver`, or `ScreenshotDriver` to add those operations. A remote driver may use any HTTP client and does not need to depend on Parsel's CLI process infrastructure.
-
 ## Testing
 
-`Parsel::fake()` swaps the shared local process runner and matches canned responses against command substrings:
+The `fake` method replaces the parser processes with canned responses, matched against a substring of the command:
 
 ```php
 $fake = Parsel::fake([
@@ -407,7 +346,7 @@ $markdown = Parsel::driver('anydoc')->file('report.docx')->markdown();
 expect($fake->ranCount())->toBe(2);
 ```
 
-Return a `ProcessResult` with `timedOutAfter` set to simulate a timeout:
+You may return a `ProcessResult` to simulate a failure or timeout:
 
 ```php
 use Shipfastlabs\Parsel\Support\ProcessResult;
@@ -415,17 +354,24 @@ use Shipfastlabs\Parsel\Support\ProcessResult;
 Parsel::fake(['anydoc' => new ProcessResult(143, '', '', ['anydoc'], timedOutAfter: 30.0)]);
 ```
 
-See [UPGRADE.md](UPGRADE.md) when moving from Parsel 0.x.
+## Upgrading
 
-## Development
+Please see [UPGRADE.md](UPGRADE.md) for upgrade instructions.
+
+## Contributing
+
+You may run the test suite with Composer:
 
 ```bash
 composer test
+```
+
+The integration tests run against the real `lit` and `anydoc` binaries. Set `PARSEL_REQUIRE_BINARIES=1` to fail instead of skip when a binary is missing, and `PARSEL_INTEGRATION_EXTENDED=1` to include tests that need network access or LibreOffice:
+
+```bash
 vendor/bin/pest --group=integration
 ```
 
-The integration group runs Parsel against the real `lit` and `anydoc` binaries (resolved from `PARSEL_LITEPARSE_BINARY`, `PARSEL_ANYDOC_BINARY` or your `PATH`) and exercises every CLI flag Parsel emits. Tests skip when a binary is missing; set `PARSEL_REQUIRE_BINARIES=1` to make them fail instead, as the Integration workflow does on every push and weekly against the latest upstream releases. Tests that need network access for OCR models or a working LibreOffice install only run with `PARSEL_INTEGRATION_EXTENDED=1`.
-
-## Credits
+## Credits and License
 
 Parsel is maintained by [Shipfastlabs](https://shipfastlabs.com) and released under the [MIT license](LICENSE.md).
