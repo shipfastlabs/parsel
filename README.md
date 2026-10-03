@@ -277,6 +277,8 @@ composer test
 vendor/bin/pest --group=integration
 ```
 
+The integration group runs Parsel against the real `lit` and `anydoc` binaries (resolved from `PARSEL_LITEPARSE_BINARY`, `PARSEL_ANYDOC_BINARY` or your `PATH`) and exercises every CLI flag Parsel emits. Tests skip when a binary is missing; set `PARSEL_REQUIRE_BINARIES=1` to make them fail instead, as the Integration workflow does on every push and weekly against the latest upstream releases. Tests that need network access for OCR models or a working LibreOffice install only run with `PARSEL_INTEGRATION_EXTENDED=1`.
+
 ## Credits
 
 Parsel is maintained by [Shipfastlabs](https://shipfastlabs.com) and released under the [MIT license](LICENSE.md).
