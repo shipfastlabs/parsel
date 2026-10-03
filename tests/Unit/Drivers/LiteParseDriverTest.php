@@ -3,9 +3,6 @@
 declare(strict_types=1);
 
 use Shipfastlabs\Parsel;
-use Shipfastlabs\Parsel\Data\Document;
-use Shipfastlabs\Parsel\Data\DocumentComplexity;
-use Shipfastlabs\Parsel\Data\Page;
 use Shipfastlabs\Parsel\Enums\ImageMode;
 use Shipfastlabs\Parsel\Exceptions\FilesystemException;
 use Shipfastlabs\Parsel\Exceptions\InvalidOutputException;
@@ -31,7 +28,7 @@ it('returns text markdown structured documents and arrays', function (): void {
 
     expect(Parsel::file(fixture('sample.pdf'))->text())->toBe('hello world')
         ->and(Parsel::file(fixture('sample.pdf'))->markdown())->toBe('# Heading')
-        ->and(Parsel::file(fixture('sample.pdf'))->parse())->toBeInstanceOf(Document::class)
+        ->and(Parsel::file(fixture('sample.pdf'))->parse()->pageCount())->toBe(2)
         ->and(Parsel::file(fixture('sample.pdf'))->toArray())->toHaveKeys(['pages', 'text', 'metadata']);
 });
 
@@ -264,7 +261,7 @@ it('streams valid pages and skips invalid JSON entries', function (): void {
     $runner = new FakeJsonOutputRunner('{"pages":["bad",{"page":1,"text":"a","textItems":[]}]}');
     $pages = iterator_to_array(new ParselManager(process: $runner, binaries: ['liteparse' => 'lit'])->file(fixture('sample.pdf'))->lazyPages());
 
-    expect($pages)->toHaveCount(1)->and($pages[0])->toBeInstanceOf(Page::class);
+    expect($pages)->toHaveCount(1)->and($pages[0]->text)->toBe('a');
 });
 
 it('propagates a failed lazy parsing process', function (): void {
@@ -503,8 +500,7 @@ it('builds is-complex commands and reuses page, password and binary options', fu
         ->withProviderOptions(LiteParseOptions::make()->pageRange(1, 3)->maxPages(3)->withPassword('pw')->withBinary('/custom/lit')->option('foo')->withoutOcr()->withDpi(300))
         ->complexity();
 
-    expect($complexity)->toBeInstanceOf(DocumentComplexity::class)
-        ->and($complexity->pagesNeedingOcr())->toBe([1, 3])
+    expect($complexity->pagesNeedingOcr())->toBe([1, 3])
         ->and($fake->recordedCommands()[0])->toBe([
             '/custom/lit', 'is-complex', fixture('sample.pdf'), '--compact', '-q',
             '--target-pages', '1-3', '--max-pages', '3', '--password', 'pw', '--foo',

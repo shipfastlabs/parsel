@@ -94,8 +94,7 @@ it('parses a real pdf into a structured document with coordinates', function ():
         ->parse();
 
     expect(pageNumbers($document))->toBe([2, 3])
-        ->and($document->pages[0]->items)->not->toBeEmpty()
-        ->and($document->pages[0]->items[0]->x)->toBeFloat();
+        ->and($document->pages[0]->items)->not->toBeEmpty();
 })->group('integration');
 
 it('selects individual pages and ranges together', function (): void {
@@ -136,8 +135,8 @@ it('streams pages of a real pdf lazily', function (): void {
         ->lazyPages());
 
     expect($pages)->toHaveCount(2)
-        ->and($pages[0]->items)->not->toBeEmpty()
-        ->and($pages[0]->items[0]->text)->toBeString();
+        ->and($pages[0]->number)->toBe(1)
+        ->and($pages[0]->items)->not->toBeEmpty();
 })->group('integration');
 
 it('writes embedded markdown images to a directory', function (): void {
