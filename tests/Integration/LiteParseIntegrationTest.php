@@ -377,3 +377,15 @@ it('includes JSON enrichments from a real pdf', function (): void {
         ->and($json['pages'][0])->toHaveKeys(['complexity', 'content_bounds'])
         ->and($pending->parse()->metadata)->toHaveKey('xfa_packets');
 })->group('integration');
+
+it('reports per-page complexity of a real pdf', function (): void {
+    $complexity = Parsel::file(demoPdf())
+        ->withProviderOptions(LiteParseOptions::make()->pageRange(1, 3))
+        ->complexity();
+
+    expect($complexity->pageCount())->toBe(3)
+        ->and($complexity->needsOcr())->toBeTrue()
+        ->and($complexity->pagesNeedingOcr())->toBe([1, 3])
+        ->and($complexity->page(2)->needsOcr)->toBeFalse()
+        ->and($complexity->page(1)->layout?->reasons)->toBe(['table-likely']);
+})->group('integration');
