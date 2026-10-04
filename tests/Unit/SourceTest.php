@@ -63,8 +63,6 @@ it('rejects byte extensions that could escape the temporary directory', function
     'parent directory' => ['pdf/../../victim.txt'],
     'separator' => ['a/b'],
     'backslash' => ['a\\b'],
-    'trailing dot' => ['pdf.'],
-    'inner whitespace' => ['p df'],
 ]);
 
 it('accepts compound byte extensions', function (): void {

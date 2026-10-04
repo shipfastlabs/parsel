@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Shipfastlabs\Parsel;
 
 use Closure;
-use InvalidArgumentException;
 use Shipfastlabs\Parsel\Contracts\Driver;
 use Shipfastlabs\Parsel\Contracts\Filesystem;
 use Shipfastlabs\Parsel\Contracts\ProcessRunner;
@@ -37,16 +36,6 @@ final class ParselManager
         /** @var array{liteparse?: string, anydoc?: string} */
         private readonly array $binaries = [],
     ) {}
-
-    /**
-     * @throws InvalidArgumentException when the timeout is negative
-     */
-    public static function assertValidTimeout(?float $seconds): void
-    {
-        if ($seconds !== null && $seconds < 0) {
-            throw new InvalidArgumentException('The timeout must be zero, positive or null.');
-        }
-    }
 
     public function processRunner(): ProcessRunner
     {

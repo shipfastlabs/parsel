@@ -103,7 +103,7 @@ final readonly class AnyDocDriver implements Driver
         $command = CliArguments::flag($command, 'format', $format);
         $command = CliArguments::flag($command, 'ocr', CliArguments::string($options, 'ocr'));
 
-        if (($options['ocr'] ?? null) === AnyDocOcrMode::Hosted->value) {
+        if (($options['ocr'] ?? null) !== AnyDocOcrMode::Reject->value) {
             $command = CliArguments::flag($command, 'api-key', CliArguments::string($options, 'api_key'));
             $command = CliArguments::flag($command, 'api-url', CliArguments::string($options, 'api_url'));
         }

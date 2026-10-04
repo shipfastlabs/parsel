@@ -57,8 +57,6 @@ final class Parsel
 
     public static function defaultTimeout(?float $seconds): void
     {
-        ParselManager::assertValidTimeout($seconds);
-
         self::$timeout = $seconds;
         self::$manager = null;
     }

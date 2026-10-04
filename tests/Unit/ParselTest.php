@@ -112,13 +112,6 @@ it('flushes facade configuration', function (): void {
         ->and(fn (): Parser => Parsel::driver('custom'))->toThrow(DriverNotFoundException::class, 'custom');
 });
 
-it('rejects a negative default timeout and accepts zero or null', function (): void {
-    expect(fn () => Parsel::defaultTimeout(-1))->toThrow(InvalidArgumentException::class);
-
-    Parsel::defaultTimeout(0);
-    Parsel::defaultTimeout(null);
-});
-
 it('exposes the process runner and filesystem to extension factories', function (): void {
     $fake = Parsel::fake();
     $received = null;

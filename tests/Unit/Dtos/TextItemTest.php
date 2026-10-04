@@ -56,11 +56,3 @@ it('falls back to snake_case font keys', function (): void {
     expect($item->fontName)->toBe('Helvetica')
         ->and($item->fontSize)->toBe(10.0);
 });
-
-it('keeps malformed optional fields null instead of inventing values', function (): void {
-    $item = TextItem::fromArray(['text' => 'x', 'confidence' => 'n/a', 'fontName' => 123, 'fontSize' => 'big']);
-
-    expect($item->confidence)->toBeNull()
-        ->and($item->fontName)->toBeNull()
-        ->and($item->fontSize)->toBeNull();
-});

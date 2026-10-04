@@ -125,7 +125,7 @@ Parsel::file('report.pdf')->save('report.json');
 
 ### Timeouts
 
-Parsing times out after 60 seconds by default. You may change the timeout for a single parse, or for every parse, in seconds. Passing `0` or `null` disables it, and a negative value throws an `InvalidArgumentException`:
+Parsing times out after 60 seconds by default. You may change the timeout for a single parse, or for every parse, in seconds. Passing `0` or `null` disables it:
 
 ```php
 Parsel::file('report.pdf')->withTimeout(120)->markdown();
@@ -332,7 +332,7 @@ $markdown = Parsel::driver('company-api')->file('report.pdf')->markdown();
 
 The factory receives the `ParselManager`. Its `processRunner` and `filesystem` methods return the process runner and filesystem the bundled drivers use, so a driver built on them respects `Parsel::fake()`.
 
-When `withProviderOptions` is called more than once, Parsel merges the `pages` selection and the `extra`, `screenshot_extra`, and `ocr_server_headers` arrays. Every other key is replaced by the latest value.
+When `withProviderOptions` is called more than once, Parsel merges string `pages` selections and the `extra` and `screenshot_extra` arrays. Every other key is replaced by the latest value.
 
 ## Testing
 
