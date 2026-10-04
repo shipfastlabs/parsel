@@ -26,7 +26,7 @@ final class PendingParse
         private readonly Driver $driver,
         private readonly Source $source,
         private readonly Filesystem $files,
-        private ?float $timeout = 60.0,
+        private ?float $timeout = ParselManager::DEFAULT_TIMEOUT,
     ) {}
 
     /** @param ProviderOptions|array<string, mixed> $options */
@@ -43,12 +43,12 @@ final class PendingParse
         $this->driver->validateOptions($options);
 
         if (isset($this->providerOptions['pages'], $options['pages'])
-            && is_string($this->providerOptions['pages'])
-            && is_string($options['pages'])) {
+            && (is_string($this->providerOptions['pages']) || is_int($this->providerOptions['pages']))
+            && (is_string($options['pages']) || is_int($options['pages']))) {
             $options['pages'] = $this->providerOptions['pages'].','.$options['pages'];
         }
 
-        foreach (['extra', 'screenshot_extra'] as $key) {
+        foreach (['extra', 'screenshot_extra', 'ocr_server_headers'] as $key) {
             if (isset($this->providerOptions[$key], $options[$key])
                 && is_array($this->providerOptions[$key])
                 && is_array($options[$key])) {
@@ -63,6 +63,8 @@ final class PendingParse
 
     public function withTimeout(?float $seconds): self
     {
+        ParselManager::assertValidTimeout($seconds);
+
         $this->timeout = $seconds;
 
         return $this;
@@ -129,7 +131,7 @@ final class PendingParse
             throw UnsupportedCapabilityException::forDriver($this->driver->name(), 'lazy pages');
         }
 
-        yield from $this->driver->pages($this->request());
+        return $this->driver->pages($this->request());
     }
 
     private function json(): string

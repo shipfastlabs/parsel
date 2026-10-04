@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Shipfastlabs\Parsel\Support;
 
 use Shipfastlabs\Parsel\Contracts\ProcessRunner;
+use Shipfastlabs\Parsel\ParselManager;
 
 final class FakeProcessRunner implements ProcessRunner
 {
@@ -20,7 +21,7 @@ final class FakeProcessRunner implements ProcessRunner
         private readonly array $responses = [],
     ) {}
 
-    public function run(array $command, ?string $input = null, ?float $timeout = 60.0): ProcessResult
+    public function run(array $command, ?string $input = null, ?float $timeout = ParselManager::DEFAULT_TIMEOUT): ProcessResult
     {
         $this->recorded[] = ['command' => $command, 'input' => $input];
 
@@ -40,9 +41,24 @@ final class FakeProcessRunner implements ProcessRunner
             return new ProcessResult(0, '', '', $command);
         }
 
-        return $match instanceof ProcessResult
-            ? $match
-            : new ProcessResult(0, $match, '', $command);
+        if ($match instanceof ProcessResult) {
+            return $match;
+        }
+
+        $this->writeOutputFile($command, $match);
+
+        return new ProcessResult(0, $match, '', $command);
+    }
+
+    /** @param list<string> $command */
+    private function writeOutputFile(array $command, string $contents): void
+    {
+        $flag = array_search('-o', $command, true);
+        $path = $flag === false ? null : ($command[$flag + 1] ?? null);
+
+        if ($path !== null && ! is_dir($path) && is_dir(dirname($path))) {
+            file_put_contents($path, $contents);
+        }
     }
 
     /**

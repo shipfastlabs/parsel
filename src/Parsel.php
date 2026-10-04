@@ -20,9 +20,9 @@ final class Parsel
 
     private static ?ProcessRunner $runner = null;
 
-    private static string $defaultDriver = 'liteparse';
+    private static string $defaultDriver = ParselManager::DEFAULT_DRIVER;
 
-    private static ?float $timeout = 60.0;
+    private static ?float $timeout = ParselManager::DEFAULT_TIMEOUT;
 
     /** @var array<string, Closure(ParselManager): Driver> */
     private static array $extensions = [];
@@ -57,6 +57,8 @@ final class Parsel
 
     public static function defaultTimeout(?float $seconds): void
     {
+        ParselManager::assertValidTimeout($seconds);
+
         self::$timeout = $seconds;
         self::$manager = null;
     }
@@ -80,8 +82,8 @@ final class Parsel
     {
         self::$manager = null;
         self::$runner = null;
-        self::$defaultDriver = 'liteparse';
-        self::$timeout = 60.0;
+        self::$defaultDriver = ParselManager::DEFAULT_DRIVER;
+        self::$timeout = ParselManager::DEFAULT_TIMEOUT;
         self::$extensions = [];
     }
 

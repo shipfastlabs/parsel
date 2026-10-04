@@ -17,6 +17,36 @@ final class CliArguments
 
     /**
      * @param  list<string>  $command
+     * @return list<string>
+     */
+    public static function flag(array $command, string $name, string|int|null $value): array
+    {
+        if ($value !== null) {
+            $command[] = '--'.$name;
+            $command[] = (string) $value;
+        }
+
+        return $command;
+    }
+
+    /** @param array<string, mixed> $options */
+    public static function scalar(array $options, string $key): string|int|null
+    {
+        $value = $options[$key] ?? null;
+
+        return is_string($value) || is_int($value) ? $value : null;
+    }
+
+    /** @param array<string, mixed> $options */
+    public static function string(array $options, string $key): ?string
+    {
+        $value = $options[$key] ?? null;
+
+        return is_string($value) ? $value : null;
+    }
+
+    /**
+     * @param  list<string>  $command
      * @param  array<string, mixed>  $options
      * @return list<string>
      */

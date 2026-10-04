@@ -111,3 +111,38 @@ it('flushes facade configuration', function (): void {
     expect($fake->recordedCommands()[0][0])->toBe('lit')
         ->and(fn (): Parser => Parsel::driver('custom'))->toThrow(DriverNotFoundException::class, 'custom');
 });
+
+it('rejects a negative default timeout and accepts zero or null', function (): void {
+    expect(fn () => Parsel::defaultTimeout(-1))->toThrow(InvalidArgumentException::class);
+
+    Parsel::defaultTimeout(0);
+    Parsel::defaultTimeout(null);
+});
+
+it('exposes the process runner and filesystem to extension factories', function (): void {
+    $fake = Parsel::fake();
+    $received = null;
+
+    Parsel::extend('probe', function (ParselManager $manager) use (&$received): Driver {
+        $received = [$manager->processRunner(), $manager->filesystem()];
+
+        return new class implements Driver
+        {
+            public function name(): string
+            {
+                return 'probe';
+            }
+
+            public function validateOptions(array $options): void {}
+
+            public function markdown(ParseRequest $request): string
+            {
+                return 'ok';
+            }
+        };
+    });
+
+    expect(Parsel::driver('probe')->bytes('x', 'pdf')->markdown())->toBe('ok')
+        ->and($received[0])->toBe($fake)
+        ->and($received[1])->toBeInstanceOf(Parsel\Contracts\Filesystem::class);
+});

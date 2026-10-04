@@ -78,3 +78,29 @@ it('rejects unsupported generators and save formats lazily', function (): void {
         ->and(fn (): string => Parsel::driver('anydoc')->file('missing.docx')->save('/tmp/output.json'))
         ->toThrow(UnsupportedCapabilityException::class, 'JSON');
 });
+
+it('checks lazy page support when called rather than when iterated', function (): void {
+    Parsel::fake();
+
+    Parsel::driver('anydoc')->bytes('x', 'pdf')->lazyPages();
+})->throws(UnsupportedCapabilityException::class, 'lazy pages');
+
+it('rejects negative timeouts and accepts zero or null', function (): void {
+    $pending = fakeParse(new FakeProcessRunner);
+
+    expect(fn (): PendingParse => $pending->withTimeout(-0.5))->toThrow(InvalidArgumentException::class)
+        ->and($pending->withTimeout(0))->toBe($pending)
+        ->and($pending->withTimeout(null))->toBe($pending);
+});
+
+it('joins page selections given as integers and merges ocr server headers', function (): void {
+    $fake = new FakeProcessRunner(['--format text' => 'ok']);
+
+    fakeParse($fake)
+        ->withProviderOptions(['pages' => '1', 'ocr' => true, 'ocr_server_headers' => ['A' => '1']])
+        ->withProviderOptions(['pages' => 2, 'ocr_server_headers' => ['B' => '2']])
+        ->withProviderOptions(['pages' => 3])
+        ->text();
+
+    expect($fake->recordedCommands()[0])->toContain('--target-pages', '1,2,3', 'A: 1', 'B: 2');
+});

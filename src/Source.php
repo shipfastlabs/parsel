@@ -34,6 +34,10 @@ final readonly class Source
             throw new InvalidArgumentException('A non-empty file extension is required for byte sources so the selected driver can detect the format.');
         }
 
+        if (preg_match('/^[a-z0-9]+(?:\.[a-z0-9]+)*$/', $normalized) !== 1) {
+            throw new InvalidArgumentException('The file extension may only contain letters, digits and dots.');
+        }
+
         return new self($normalized, null, $contents);
     }
 

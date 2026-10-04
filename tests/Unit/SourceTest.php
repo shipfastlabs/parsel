@@ -56,3 +56,17 @@ it('rejects a whitespace-only extension for byte sources', function (): void {
 it('rejects a tab-only extension for byte sources', function (): void {
     Source::fromBytes('data', "\t");
 })->throws(InvalidArgumentException::class);
+
+it('rejects byte extensions that could escape the temporary directory', function (string $extension): void {
+    expect(fn (): Source => Source::fromBytes('x', $extension))->toThrow(InvalidArgumentException::class);
+})->with([
+    'parent directory' => ['pdf/../../victim.txt'],
+    'separator' => ['a/b'],
+    'backslash' => ['a\\b'],
+    'trailing dot' => ['pdf.'],
+    'inner whitespace' => ['p df'],
+]);
+
+it('accepts compound byte extensions', function (): void {
+    expect(Source::fromBytes('x', '.TAR.gz')->extension)->toBe('tar.gz');
+});

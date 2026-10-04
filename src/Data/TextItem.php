@@ -31,10 +31,15 @@ final readonly class TextItem
             y: Cast::float($raw['y'] ?? 0),
             width: Cast::float($raw['width'] ?? 0),
             height: Cast::float($raw['height'] ?? 0),
-            confidence: isset($raw['confidence']) ? Cast::float($raw['confidence']) : null,
-            fontName: $fontName !== null ? Cast::str($fontName) : null,
-            fontSize: $fontSize !== null ? Cast::float($fontSize) : null,
+            confidence: self::number($raw['confidence'] ?? null),
+            fontName: is_string($fontName) ? $fontName : null,
+            fontSize: self::number($fontSize),
         );
+    }
+
+    private static function number(mixed $value): ?float
+    {
+        return is_numeric($value) ? (float) $value : null;
     }
 
     /**

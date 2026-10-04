@@ -79,3 +79,12 @@ it('formats whole second timeouts and defaults the driver name', function (): vo
 it('falls back to a zero timeout for results that did not record one', function (): void {
     expect(ParseTimedOutException::fromResult(new ProcessResult(1, '', '', ['lit']))->timeout)->toBe(0.0);
 });
+
+it('masks secrets in the command of a timeout', function (): void {
+    $command = ['lit', '--password', 'hunter2', '--api-key=sk-secret'];
+
+    expect(ParseTimedOutException::fromResult(new ProcessResult(143, '', '', $command, 1.0), 'liteparse')->command)
+        ->toBe(['lit', '--password', '********', '--api-key=********'])
+        ->and(ParseTimedOutException::after(1.0, ['anydoc', '--api-key', 'sk'])->command)
+        ->toBe(['anydoc', '--api-key', '********']);
+});

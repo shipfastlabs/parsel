@@ -169,3 +169,16 @@ it('maps exit codes and passes ocr flags when streaming bytes through stdin', fu
 
     expect($fake->recordedCommands()[0])->toContain('-', '--ocr', 'hosted', '--api-key', 'fc-key');
 });
+
+it('never sends the api key unless hosted OCR is selected, even when an earlier call set it', function (): void {
+    $fake = Parsel::fake(['anydoc' => 'ok']);
+
+    Parsel::driver('anydoc')->bytes('x', 'pdf')
+        ->withProviderOptions(AnyDocOptions::make()->withHostedOcr('sk-secret', 'https://ocr.test'))
+        ->withProviderOptions(['ocr' => 'reject'])
+        ->markdown();
+    Parsel::driver('anydoc')->bytes('x', 'pdf')->withProviderOptions(['api_key' => 'sk-secret'])->markdown();
+
+    expect($fake->recordedCommands()[0])->toContain('--ocr', 'reject')->not->toContain('--api-key', 'sk-secret', '--api-url')
+        ->and($fake->recordedCommands()[1])->not->toContain('--api-key');
+});

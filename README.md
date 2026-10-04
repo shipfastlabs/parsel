@@ -125,7 +125,7 @@ Parsel::file('report.pdf')->save('report.json');
 
 ### Timeouts
 
-Parsing times out after 60 seconds by default. You may change the timeout for a single parse, or for every parse, in seconds. Passing `null` disables it:
+Parsing times out after 60 seconds by default. You may change the timeout for a single parse, or for every parse, in seconds. Passing `0` or `null` disables it, and a negative value throws an `InvalidArgumentException`:
 
 ```php
 Parsel::file('report.pdf')->withTimeout(120)->markdown();
@@ -285,7 +285,7 @@ Parsel::file('receipt.png')
 
 ## Handling Errors
 
-All exceptions extend `Shipfastlabs\Parsel\Exceptions\ParselException`. When a parser exits with an error, Parsel throws a `ParseFailedException` exposing `exitCode`, `stderr`, and `command`. When it exceeds the timeout, Parsel throws a `ParseTimedOutException` exposing `timeout`, `driver`, and `command`:
+Parser, filesystem, and option failures extend `Shipfastlabs\Parsel\Exceptions\ParselException`. Invalid arguments, such as an empty path, an unsafe byte extension, or an unknown image mode, throw a standard `InvalidArgumentException` or `ValueError`. When a parser exits with an error, Parsel throws a `ParseFailedException` exposing `exitCode`, `stderr`, and `command`. When it exceeds the timeout, Parsel throws a `ParseTimedOutException` exposing `timeout`, `driver`, and `command`:
 
 ```php
 use Shipfastlabs\Parsel\Exceptions\ParseFailedException;
@@ -330,6 +330,10 @@ Parsel::extend('company-api', fn (ParselManager $manager): Driver => new Company
 $markdown = Parsel::driver('company-api')->file('report.pdf')->markdown();
 ```
 
+The factory receives the `ParselManager`. Its `processRunner` and `filesystem` methods return the process runner and filesystem the bundled drivers use, so a driver built on them respects `Parsel::fake()`.
+
+When `withProviderOptions` is called more than once, Parsel merges the `pages` selection and the `extra`, `screenshot_extra`, and `ocr_server_headers` arrays. Every other key is replaced by the latest value.
+
 ## Testing
 
 The `fake` method replaces the parser processes with canned responses, matched against a substring of the command:
@@ -340,10 +344,18 @@ $fake = Parsel::fake([
     'anydoc' => '# Converted document',
 ]);
 
-$document = Parsel::file('invoice.pdf')->parse();
-$markdown = Parsel::driver('anydoc')->file('report.docx')->markdown();
+$document = Parsel::bytes($pdf, 'pdf')->parse();
+$markdown = Parsel::driver('anydoc')->bytes($docx, 'docx')->markdown();
 
 expect($fake->ranCount())->toBe(2);
+```
+
+Only the parser processes are faked, so a path passed to `file` must still exist. Use `bytes` when the document isn't on disk.
+
+The fake, default driver, default timeout, and registered drivers are kept for the whole process. Call `Parsel::flush()` in your test teardown to reset them:
+
+```php
+afterEach(fn () => Parsel::flush());
 ```
 
 You may return a `ProcessResult` to simulate a failure or timeout:

@@ -12,6 +12,6 @@ final readonly class ParseRequest
     public function __construct(
         public Source $source,
         public array $options = [],
-        public ?float $timeout = 60.0,
+        public ?float $timeout = ParselManager::DEFAULT_TIMEOUT,
     ) {}
 }

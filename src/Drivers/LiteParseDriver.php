@@ -95,12 +95,12 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
 
     public function screenshots(ParseRequest $request, string $directory): array
     {
-        if (! $this->files->exists($directory)) {
+        if (! $this->files->exists($directory) || is_file($directory)) {
             throw FilesystemException::directoryNotFound($directory);
         }
 
         $options = $request->options;
-        $binary = $this->resolver->resolve($this->string($options, 'binary') ?? $this->configuredBinary);
+        $binary = $this->binary($options);
         $staging = new StagingDirectory($this->files);
         $output = $staging->create();
 
@@ -109,9 +109,9 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
                 $request->source,
                 function (string $file) use ($binary, $output, $options): array {
                     $command = CliArguments::command($binary, 'screenshot', $file, '-o', $output, '-q');
-                    $command = $this->appendFlag($command, 'target-pages', $this->scalar($options, 'pages'));
-                    $command = $this->appendFlag($command, 'dpi', $this->scalar($options, 'dpi'));
-                    $command = $this->appendFlag($command, 'password', $this->scalar($options, 'password'));
+                    $command = CliArguments::flag($command, 'target-pages', CliArguments::scalar($options, 'pages'));
+                    $command = CliArguments::flag($command, 'dpi', CliArguments::scalar($options, 'dpi'));
+                    $command = CliArguments::flag($command, 'password', CliArguments::scalar($options, 'password'));
 
                     return CliArguments::appendExtra($command, $options, 'screenshot_extra');
                 },
@@ -141,7 +141,7 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
     {
         $output = $this->files->temporaryPath('json');
         $options = $request->options;
-        $binary = $this->resolver->resolve($this->string($options, 'binary') ?? $this->configuredBinary);
+        $binary = $this->binary($options);
         $config = $this->writeConfig($options);
 
         try {
@@ -151,6 +151,10 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
                 $request->timeout,
                 $this->name(),
             );
+
+            if (! $this->files->exists($output)) {
+                throw InvalidOutputException::emptyOutput($this->name());
+            }
 
             foreach (Items::fromFile($output, ['pointer' => '/pages', 'decoder' => new ExtJsonDecoder(true)]) as $rawPage) {
                 if (is_array($rawPage)) {
@@ -164,10 +168,16 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
         }
     }
 
+    /** @param array<string, mixed> $options */
+    private function binary(array $options): string
+    {
+        return $this->resolver->resolve(CliArguments::string($options, 'binary') ?? $this->configuredBinary);
+    }
+
     private function parseResult(ParseRequest $request, OutputFormat $format): string
     {
         $options = $request->options;
-        $binary = $this->resolver->resolve($this->string($options, 'binary') ?? $this->configuredBinary);
+        $binary = $this->binary($options);
         $config = $this->writeConfig($options);
 
         try {
@@ -187,13 +197,13 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
      */
     private function writeConfig(array $options): ?string
     {
-        $tessdata = $this->string($options, 'tessdata_path');
+        $tessdata = CliArguments::string($options, 'tessdata_path');
 
         if (($options['ocr'] ?? false) !== true || $tessdata === null) {
             return null;
         }
 
-        $settings = $this->userConfig($this->string($options, 'config'));
+        $settings = $this->userConfig(CliArguments::string($options, 'config'));
 
         if ($settings === null) {
             return null;
@@ -272,10 +282,10 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
             $command[] = $output;
         }
 
-        $command = $this->appendFlag($command, 'target-pages', $this->scalar($options, 'pages'));
-        $command = $this->appendFlag($command, 'max-pages', $this->scalar($options, 'max_pages'));
-        $command = $this->appendFlag($command, 'password', $this->scalar($options, 'password'));
-        $command = $this->appendFlag($command, 'config', $config ?? $this->string($options, 'config'));
+        $command = CliArguments::flag($command, 'target-pages', CliArguments::scalar($options, 'pages'));
+        $command = CliArguments::flag($command, 'max-pages', CliArguments::scalar($options, 'max_pages'));
+        $command = CliArguments::flag($command, 'password', CliArguments::scalar($options, 'password'));
+        $command = CliArguments::flag($command, 'config', $config ?? CliArguments::string($options, 'config'));
 
         if (($options['continue_on_page_error'] ?? false) === true) {
             $command[] = '--continue-on-page-error';
@@ -284,21 +294,21 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
         if (($options['ocr'] ?? false) !== true) {
             $command[] = '--no-ocr';
         } else {
-            $command = $this->appendFlag($command, 'ocr-language', $this->scalar($options, 'ocr_language'));
-            $command = $this->appendFlag($command, 'ocr-server-url', $this->scalar($options, 'ocr_server_url'));
+            $command = CliArguments::flag($command, 'ocr-language', CliArguments::scalar($options, 'ocr_language'));
+            $command = CliArguments::flag($command, 'ocr-server-url', CliArguments::scalar($options, 'ocr_server_url'));
             $command = $this->appendOcrServerHeaders($command, $options['ocr_server_headers'] ?? []);
-            $command = $this->appendFlag($command, 'num-workers', $this->scalar($options, 'workers'));
+            $command = CliArguments::flag($command, 'num-workers', CliArguments::scalar($options, 'workers'));
         }
 
-        $command = $this->appendFlag($command, 'dpi', $this->scalar($options, 'dpi'));
+        $command = CliArguments::flag($command, 'dpi', CliArguments::scalar($options, 'dpi'));
 
         if (($options['preserve_small_text'] ?? false) === true) {
             $command[] = '--preserve-small-text';
         }
 
         if ($format === OutputFormat::Markdown) {
-            $command = $this->appendFlag($command, 'image-mode', $this->scalar($options, 'image_mode'));
-            $command = $this->appendFlag($command, 'image-output-dir', $this->scalar($options, 'image_directory'));
+            $command = CliArguments::flag($command, 'image-mode', CliArguments::scalar($options, 'image_mode'));
+            $command = CliArguments::flag($command, 'image-output-dir', CliArguments::scalar($options, 'image_directory'));
 
             if (($options['links'] ?? true) === false) {
                 $command[] = '--no-links';
@@ -336,20 +346,6 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
      * @param  list<string>  $command
      * @return list<string>
      */
-    private function appendFlag(array $command, string $name, string|int|null $value): array
-    {
-        if ($value !== null) {
-            $command[] = '--'.$name;
-            $command[] = (string) $value;
-        }
-
-        return $command;
-    }
-
-    /**
-     * @param  list<string>  $command
-     * @return list<string>
-     */
     private function appendOcrServerHeaders(array $command, mixed $headers): array
     {
         if (! is_array($headers)) {
@@ -364,21 +360,5 @@ final readonly class LiteParseDriver implements Driver, LazyPageDriver, Screensh
         }
 
         return $command;
-    }
-
-    /** @param array<string, mixed> $options */
-    private function scalar(array $options, string $key): string|int|null
-    {
-        $value = $options[$key] ?? null;
-
-        return is_string($value) || is_int($value) ? $value : null;
-    }
-
-    /** @param array<string, mixed> $options */
-    private function string(array $options, string $key): ?string
-    {
-        $value = $options[$key] ?? null;
-
-        return is_string($value) ? $value : null;
     }
 }
