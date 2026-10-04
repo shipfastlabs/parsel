@@ -18,6 +18,10 @@ use Shipfastlabs\Parsel\Support\SymfonyProcessRunner;
 
 final class ParselManager
 {
+    public const string DEFAULT_DRIVER = 'liteparse';
+
+    public const float DEFAULT_TIMEOUT = 60.0;
+
     /** @var array<string, Closure(self): Driver> */
     private array $extensions = [];
 
@@ -27,11 +31,21 @@ final class ParselManager
     public function __construct(
         private readonly ProcessRunner $process = new SymfonyProcessRunner,
         private readonly Filesystem $files = new NativeFilesystem,
-        private string $default = 'liteparse',
-        private readonly ?float $timeout = 60.0,
+        private string $default = self::DEFAULT_DRIVER,
+        private readonly ?float $timeout = self::DEFAULT_TIMEOUT,
         /** @var array{liteparse?: string, anydoc?: string} */
         private readonly array $binaries = [],
     ) {}
+
+    public function processRunner(): ProcessRunner
+    {
+        return $this->process;
+    }
+
+    public function filesystem(): Filesystem
+    {
+        return $this->files;
+    }
 
     public function file(string $path): PendingParse
     {

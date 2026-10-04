@@ -492,3 +492,22 @@ it('does not send JSON enrichment flags for text or markdown output', function (
         expect(array_filter($command, fn (string $part): bool => str_starts_with($part, '--extract-') || $part === '--complexity'))->toBe([]);
     }
 });
+
+it('fails with a Parsel exception when lazy parsing produces no output file', function (): void {
+    $runner = new FakeProcessRunner;
+
+    iterator_to_array(new ParselManager(process: $runner, binaries: ['liteparse' => 'lit'])->file(fixture('sample.pdf'))->lazyPages());
+})->throws(InvalidOutputException::class);
+
+it('can fake lazy pages with the bundled fake runner', function (): void {
+    $runner = new FakeProcessRunner(['--format json' => '{"pages":[{"page":1,"text":"a","textItems":[]}]}']);
+    $pages = iterator_to_array(new ParselManager(process: $runner, binaries: ['liteparse' => 'lit'])->file(fixture('sample.pdf'))->lazyPages());
+
+    expect($pages)->toHaveCount(1)->and($pages[0]->text)->toBe('a');
+});
+
+it('reports a file given as the screenshot destination as a missing directory', function (): void {
+    Parsel::fake();
+
+    Parsel::file(fixture('sample.pdf'))->screenshots(fixture('sample.pdf'));
+})->throws(FilesystemException::class, 'directory');

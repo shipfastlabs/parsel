@@ -26,7 +26,7 @@ final class PendingParse
         private readonly Driver $driver,
         private readonly Source $source,
         private readonly Filesystem $files,
-        private ?float $timeout = 60.0,
+        private ?float $timeout = ParselManager::DEFAULT_TIMEOUT,
     ) {}
 
     /** @param ProviderOptions|array<string, mixed> $options */

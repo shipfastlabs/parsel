@@ -12,7 +12,7 @@ final readonly class Parser
     public function __construct(
         private Driver $driver,
         private Filesystem $files,
-        private ?float $timeout = 60.0,
+        private ?float $timeout = ParselManager::DEFAULT_TIMEOUT,
     ) {}
 
     public function file(string $path): PendingParse

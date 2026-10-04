@@ -43,3 +43,23 @@ it('prefers the longest matching needle', function (): void {
 
     expect($fake->run(['lit', 'parse', 'file.pdf'])->stdout)->toBe('specific');
 });
+
+it('writes a string response to the file named by -o so file based drivers can be faked', function (): void {
+    $path = sys_get_temp_dir().DIRECTORY_SEPARATOR.'parsel_fake_'.uniqid('', true).'.json';
+
+    new FakeProcessRunner(['parse' => '{"pages":[]}'])->run(['lit', 'parse', 'a.pdf', '-o', $path]);
+
+    expect(file_get_contents($path))->toBe('{"pages":[]}');
+
+    unlink($path);
+});
+
+it('does not write when -o is a directory, has no value or points into a missing directory', function (): void {
+    $fake = new FakeProcessRunner(['lit' => 'out']);
+    $fake->run(['lit', '-o', sys_get_temp_dir()]);
+    $fake->run(['lit', '-o']);
+    $fake->run(['lit', '-o', '/missing/parsel/dir/out.json']);
+
+    expect(file_exists('/missing/parsel/dir/out.json'))->toBeFalse()
+        ->and($fake->ranCount())->toBe(3);
+});

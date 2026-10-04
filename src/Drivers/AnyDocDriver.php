@@ -58,9 +58,8 @@ final readonly class AnyDocDriver implements Driver
     public function markdown(ParseRequest $request): string
     {
         $options = $request->options;
-        $explicit = $options['binary'] ?? null;
-        $binary = $this->resolver->resolve(is_string($explicit) ? $explicit : $this->configuredBinary);
-        $format = is_string($options['format'] ?? null) ? $options['format'] : null;
+        $binary = $this->resolver->resolve(CliArguments::string($options, 'binary') ?? $this->configuredBinary);
+        $format = CliArguments::string($options, 'format');
         $source = $request->source;
 
         $result = $this->streamsThroughStdin($source, $format)
@@ -101,18 +100,12 @@ final readonly class AnyDocDriver implements Driver
     {
         $command = CliArguments::command($binary, $input);
 
-        if ($format !== null) {
-            $command[] = '--format';
-            $command[] = $format;
-        }
+        $command = CliArguments::flag($command, 'format', $format);
+        $command = CliArguments::flag($command, 'ocr', CliArguments::string($options, 'ocr'));
 
-        foreach (['ocr' => '--ocr', 'api_key' => '--api-key', 'api_url' => '--api-url'] as $key => $flag) {
-            $value = $options[$key] ?? null;
-
-            if (is_string($value)) {
-                $command[] = $flag;
-                $command[] = $value;
-            }
+        if (($options['ocr'] ?? null) !== AnyDocOcrMode::Reject->value) {
+            $command = CliArguments::flag($command, 'api-key', CliArguments::string($options, 'api_key'));
+            $command = CliArguments::flag($command, 'api-url', CliArguments::string($options, 'api_url'));
         }
 
         return CliArguments::appendExtra($command, $options);

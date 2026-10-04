@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Shipfastlabs\Parsel\Support;
 
 use Shipfastlabs\Parsel\Contracts\ProcessRunner;
+use Shipfastlabs\Parsel\ParselManager;
 use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
@@ -13,7 +14,7 @@ use Symfony\Component\Process\Process;
  */
 final class SymfonyProcessRunner implements ProcessRunner
 {
-    public function run(array $command, ?string $input = null, ?float $timeout = 60.0): ProcessResult
+    public function run(array $command, ?string $input = null, ?float $timeout = ParselManager::DEFAULT_TIMEOUT): ProcessResult
     {
         $process = new Process($command, null, null, $input, $timeout);
         $timedOutAfter = null;

@@ -34,6 +34,10 @@ final readonly class Source
             throw new InvalidArgumentException('A non-empty file extension is required for byte sources so the selected driver can detect the format.');
         }
 
+        if (preg_match('/[\\\\\/\0]/', $normalized) === 1) {
+            throw new InvalidArgumentException('The file extension must not contain path separators.');
+        }
+
         return new self($normalized, null, $contents);
     }
 
